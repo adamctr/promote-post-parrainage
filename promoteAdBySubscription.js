@@ -49,7 +49,7 @@ async function promoteAd() {
     }
 
     // Click to promote the ad (adjust the selector if necessary)
-    //await page.click('a[href="/espace_parrain/profile/annonces/125780/remonter"]');
+    await page.click('a[href="/espace_parrain/profile/annonces/125780/remonter"]');
     console.log(`Post promu grâce à l'abonnement avec succès à ${new Date().toLocaleString()}.`);
 
 
