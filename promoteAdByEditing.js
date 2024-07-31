@@ -124,7 +124,7 @@ async function promoteAdByEditing() {
           console.log('Ajout du point');
         }
   
-        console.log('Post modifié avec succès.');
+        console.log(`Post modifié avec succès à ${new Date().toLocaleString()}.`);
 
 
     //   }
@@ -149,4 +149,6 @@ const schedulePromotion = () => {
 
   };
 
-  promoteAdByEditing();
+schedulePromotion();
+
+module.exports = { schedulePromotion };

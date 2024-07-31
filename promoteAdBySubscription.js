@@ -50,7 +50,7 @@ async function promoteAd() {
 
     // Click to promote the ad (adjust the selector if necessary)
     //await page.click('a[href="/espace_parrain/profile/annonces/125780/remonter"]');
-    console.log('Ad promotion clicked');
+    console.log(`Post promu grâce à l'abonnement avec succès à ${new Date().toLocaleString()}.`);
 
 
     // Attendre une interaction de l'utilisateur pour fermer le navigateur
@@ -67,7 +67,7 @@ async function promoteAd() {
 const schedulePromotion = () => {
     // Schedule for 8 AM
     schedule.scheduleJob('0 8 * * *', promoteAd);
-  
+
     // Schedule for 12 PM
     schedule.scheduleJob('0 12 * * *', promoteAd);
   
@@ -75,4 +75,6 @@ const schedulePromotion = () => {
     schedule.scheduleJob('0 16 * * *', promoteAd);
   };
 
-  promoteAd();
+schedulePromotion();
+
+module.exports = { schedulePromotion };
