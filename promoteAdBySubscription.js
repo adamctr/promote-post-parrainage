@@ -52,11 +52,6 @@ async function promoteAd() {
     await page.click('a[href="/espace_parrain/profile/annonces/125780/remonter"]');
     console.log(`Post promu grâce à l'abonnement avec succès à ${new Date().toLocaleString()}.`);
 
-
-    // Attendre une interaction de l'utilisateur pour fermer le navigateur
-    console.log('Appuyez sur une touche pour fermer le navigateur...');
-    await new Promise(resolve => process.stdin.once('data', resolve));
-
   } catch (error) {
     console.error('Une erreur est survenue:', error);
   } finally {
@@ -66,13 +61,13 @@ async function promoteAd() {
 
 const schedulePromotion = () => {
     // Schedule for 8 AM
-    schedule.scheduleJob('0 8 * * *', promoteAd);
+    schedule.scheduleJob('5 8 * * *', promoteAd);
 
     // Schedule for 12 PM
-    schedule.scheduleJob('0 12 * * *', promoteAd);
+    schedule.scheduleJob('5 12 * * *', promoteAd);
   
     // Schedule for 4 PM
-    schedule.scheduleJob('0 16 * * *', promoteAd);
+    schedule.scheduleJob('5 16 * * *', promoteAd);
   };
 
 schedulePromotion();

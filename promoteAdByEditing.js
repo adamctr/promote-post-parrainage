@@ -103,7 +103,7 @@ async function promoteAdByEditing() {
         });
   
         // Texte à ajouter
-        const textToInsert = '.';
+        const textToInsert = '.qzdqz';
   
         // Vérifiez si le texte se termine par un point
         if (currentText.endsWith('.')) {
@@ -123,15 +123,21 @@ async function promoteAdByEditing() {
           });
           console.log('Ajout du point');
         }
-  
+
+        // Appuyer sur le bouton confirmer
+        try {
+          // 
+          await page.waitForSelector('button#edit_message_save');
+          await page.click('button#edit_message_save');
+          
+        } catch (error) {
+          throw new Error('L\'élément #edit_message_save n\'a pas été trouvé dans le délai imparti');
+        }
+        
         console.log(`Post modifié avec succès à ${new Date().toLocaleString()}.`);
 
 
     //   }
-
-    // Attendre une interaction de l'utilisateur pour fermer le navigateur
-    console.log('Appuyez sur une touche pour fermer le navigateur...');
-    await new Promise(resolve => process.stdin.once('data', resolve));
 
   } catch (error) {
     console.error('Une erreur est survenue:', error);
@@ -142,13 +148,13 @@ async function promoteAdByEditing() {
 
 const schedulePromotion = () => {
     // Schedule for 10 AM
-    schedule.scheduleJob('0 10 * * *', promoteAdByEditing);
+    schedule.scheduleJob('5 10 * * *', promoteAdByEditing);
   
     // Schedule for 18 PM
-    schedule.scheduleJob('0 18 * * *', promoteAdByEditing);
+    schedule.scheduleJob('5 18 * * *', promoteAdByEditing);
 
   };
 
-schedulePromotion();
+  schedulePromotion();
 
 module.exports = { schedulePromotion };
