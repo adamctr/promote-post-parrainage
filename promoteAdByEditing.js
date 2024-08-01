@@ -39,7 +39,7 @@ async function promoteAdByEditing() {
     // L'utilisateur se trouve dans son espace parrain https://www.1parrainage.com/espace_parrain/
 
     // Wait for navigation to the user space page
-    await page.waitForSelector('a[href="/espace_parrain/profile/annonces/125780/remonter"]');
+    await page.waitForSelector('a[href="/espace_parrain/parrainages/');
     console.log('Login successful, user space page loaded');
 
     // Ensure we are on the user space page
