@@ -6,7 +6,7 @@ require('dotenv').config();
 // Will promote ad at 10 AM and 18 AM by editing a post.
 
 async function promoteAdByEditing() {
-  const browser = await puppeteer.launch({ headless: false }); // Mettez headless: true pour exécution en arrière-plan
+  const browser = await puppeteer.launch({ args: ['--no-sandbox', '--disable-setuid-sandbox']}); // Mettez headless: true pour exécution en arrière-plan
   const page = await browser.newPage();
   
   try {
