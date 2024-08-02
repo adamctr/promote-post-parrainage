@@ -70,6 +70,4 @@ const schedulePromotion = () => {
     schedule.scheduleJob('5 16 * * *', promoteAd);
   };
 
-schedulePromotion();
-
 module.exports = { schedulePromotion };

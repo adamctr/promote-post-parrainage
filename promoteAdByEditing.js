@@ -155,6 +155,4 @@ const schedulePromotion = () => {
 
   };
 
-  schedulePromotion();
-
 module.exports = { schedulePromotion };
