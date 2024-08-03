@@ -148,7 +148,7 @@ async function promoteAdByEditing() {
 
 const schedulePromotion = () => {
     // Schedule for 10 AM
-    schedule.scheduleJob('5 10 * * *', promoteAdByEditing);
+    schedule.scheduleJob('5 16 * * *', promoteAdByEditing);
   
     // Schedule for 18 PM
     schedule.scheduleJob('5 18 * * *', promoteAdByEditing);

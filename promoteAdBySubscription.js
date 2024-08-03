@@ -61,13 +61,13 @@ async function promoteAd() {
 
 const schedulePromotion = () => {
     // Schedule for 8 AM
-    schedule.scheduleJob('5 8 * * *', promoteAd);
+    schedule.scheduleJob('5 10 * * *', promoteAd);
 
     // Schedule for 12 PM
     schedule.scheduleJob('5 12 * * *', promoteAd);
   
     // Schedule for 4 PM
-    schedule.scheduleJob('5 16 * * *', promoteAd);
+    schedule.scheduleJob('5 14 * * *', promoteAd);
   };
 
 module.exports = { schedulePromotion };
