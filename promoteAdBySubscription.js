@@ -53,7 +53,7 @@ async function promoteAd() {
     console.log(`Post promu grâce à l'abonnement avec succès à ${new Date().toLocaleString()}.`);
 
   } catch (error) {
-    console.error('Une erreur est survenue:', error);
+    console.error('Une erreur est survenue:', error), 'à', new Date().toLocaleString();
   } finally {
     await browser.close();
   }

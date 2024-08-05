@@ -140,7 +140,7 @@ async function promoteAdByEditing() {
     //   }
 
   } catch (error) {
-    console.error('Une erreur est survenue:', error);
+    console.error('Une erreur est survenue:', error), 'à', new Date().toLocaleString();
   } finally {
     await browser.close();
   }
