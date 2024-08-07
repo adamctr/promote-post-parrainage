@@ -1,158 +1,124 @@
 const puppeteer = require('puppeteer');
 const schedule = require('node-schedule');
 
-require('dotenv').config();
+const { connectToAccount } = require('./utils.js');
+const { goToParrainagePostsSpace } = require('./utils.js');
 
-// Will promote ad at 10 AM and 18 AM by editing a post.
+async function getNumberOfPosts(page) {
+    try {
+        await page.waitForSelector('a.parrainage_bt.edit');
+        const posts = await page.$$('a.parrainage_bt.edit');
+        console.log(`----------------------- Found ${posts.length} elements to interact with. --------------------------------------`);
+        return posts.length;
+    } catch (error) {
+        console.error(`Error in getNumberOfPosts: ${error}`);
+        throw error;
+    }
+}
+
+async function editPost(page, postIndex) {
+  try {
+    // Attendre que la liste des coupons soit visible
+    await page.waitForSelector('.coupon-list.list-wrapper');
+
+    // Sélectionner tous les éléments de coupon dans la liste
+    const couponElements = await page.$$('[class="coupon-list list-wrapper"]');
+
+    // Vérifier que l'index du post est dans les limites
+    if (postIndex < couponElements.length) {
+        const coupon = couponElements[postIndex];
+
+        // Récupérer le nom de l'annonce via l'image
+        // ------------- Récupération URL
+        const imageUrl = await coupon.evaluate((coupon) => {
+          const imgElement = coupon.querySelector('img');
+          return imgElement.src;
+        })
+
+        // ------------- Extract the part after '/leslogos/'
+         const imageNameWithExtension = imageUrl.split('/leslogos/')[1];
+         const imageName = imageNameWithExtension.split('.')[0];
+         console.log(`Image name: ${imageName}`);
+
+        // Trouver le bouton "Edit" à l'intérieur de cet élément de coupon
+        await page.waitForSelector('a.parrainage_bt.edit');
+        const editButton = await coupon.$('a.parrainage_bt.edit');
+        
+        if (editButton) {
+            // Cliquez sur le bouton "Edit"
+            await editButton.click();
+            console.log(`Clicked on Edit button for post index ${postIndex}`);
+            
+            // Attendre la navigation après le clic
+            await page.waitForNavigation({ waitUntil: 'networkidle0' });
+
+            // Modifications à l'intérieur du post (comme dans l'exemple précédent)
+            await page.waitForSelector('iframe.cke_wysiwyg_frame');
+            const iframeElementHandle = await page.$('iframe.cke_wysiwyg_frame');
+            const iframe = await iframeElementHandle.contentFrame();
+
+            await iframe.waitForSelector('body.cke_editable');
+            await iframe.focus('body.cke_editable');
+
+            const currentText = await iframe.evaluate(() => document.body.textContent.trim());
+
+            if (currentText.endsWith('.')) {
+                await iframe.evaluate(() => {
+                    document.execCommand('delete', false);
+                });
+                console.log('Removed the dot at the end');
+            } else {
+                await iframe.evaluate(() => {
+                    document.execCommand('insertText', false, '.');
+                });
+                console.log('Added a dot');
+            }
+
+            try {
+              await page.waitForSelector('button#edit_message_save');
+              await page.click('button#edit_message_save');
+              await page.waitForNavigation({ waitUntil: 'networkidle0' });
+              console.log(`Post ${imageName} edited successfully at ${new Date().toLocaleString()}`);
+          } catch (error) {
+              console.error(`Failed to save ${imageName} post, retrying from the post list page:`, error);
+              await page.goto('https://www.1parrainage.com/espace_parrain/parrainages/', { waitUntil: 'networkidle0' });
+          }
+        } else {
+            console.log(`Edit button not found for post index ${postIndex}`);
+        }
+    } else {
+        console.log(`Post index ${postIndex} out of bounds`);
+    }
+} catch (error) {
+    console.error(`Error in editPost: ${error}`);
+}
+}
 
 async function promoteAdByEditing() {
-  const browser = await puppeteer.launch({ args: ['--no-sandbox', '--disable-setuid-sandbox']}); // Mettez headless: true pour exécution en arrière-plan
-  const page = await browser.newPage();
-  
-  try {
-    // Set screen size.
-    await page.setViewport({width: 1080, height: 1024});
+    const page = await connectToAccount();
 
-    // Naviguer vers le site
-    await page.goto('https://www.1parrainage.com/login', {
-        waitUntil: 'networkidle0' // Attend que le réseau soit inactif
-    });
-
-    console.log('Page chargée avec succès')
-
-    // Accept cookies 
-
-    try {
-        await page.click('span.sd-cmp-2jmDj.sd-cmp-TOv77', { timeout: 5000 });
-        console.log('Cookies accepted');
-      } catch (error) {
-        console.log('Cookies banner not found or already accepted');
-      }
-
-    // Se connecter (à adapter selon le site)
-      console.log(process.env.EMAIL);
-
-    await page.type('#_username', process.env.EMAIL);
-    await page.type('#_password', process.env.PASSWORD);
-    await page.click('input.btn.btn-custom[value="Me connecter"]');
-
-    // L'utilisateur se trouve dans son espace parrain https://www.1parrainage.com/espace_parrain/
-
-    // Wait for navigation to the user space page
-    await page.waitForSelector('a[href="/espace_parrain/parrainages/');
-    console.log('Login successful, user space page loaded');
-
-    // Ensure we are on the user space page
-    if (page.url().includes('/espace_parrain')) {
-    console.log('Confirmed we are on the user space page');
-    } else {
-    throw new Error('Failed to navigate to the user space page');
-    }
-
-    // Go to post page
-
-    await page.click('a[href="/espace_parrain/parrainages/"]');
-
-    // Ensure we are on the post page
-
-    if (page.url().includes('/espace_parrain/parrainages')) {
-    console.log('Confirmed we are on the user post page');
-    } else {
-    throw new Error('Failed to navigate to the user post page');
-    }
-
-    // Edit the post
-
-    await page.waitForSelector('a.parrainage_bt.edit');
-
-    // Get all elements with class .parrainage_bt.edit
-    const posts = await page.$$('a.parrainage_bt.edit');
-    console.log(`Found ${posts.length} elements to interact with.`);
-    
-    // Modifier chaque post
-    // for (const post of posts) {
-        await posts[0].click();
-
-        await page.waitForSelector('iframe.cke_wysiwyg_frame');
-
-        const iframeSelector = 'iframe.cke_wysiwyg_frame';
-        const iframeElementHandle = await page.$(iframeSelector);
-
-        const iframe = await iframeElementHandle.contentFrame();
-
-        // Assurez-vous que le contenu est prêt avant d'écrire dans l'iframe
-        await iframe.waitForSelector('body.cke_editable');
-        await iframe.focus('body.cke_editable');
-
-        // Placer le curseur à la fin du contenu
-        await iframe.evaluate(() => {
-            const body = document.querySelector('body.cke_editable');
-            const range = document.createRange();
-            const selection = window.getSelection();
-            
-            range.selectNodeContents(body);
-            range.collapse(false); // False pour déplacer le curseur à la fin
-            selection.removeAllRanges();
-            selection.addRange(range);
-        });
-
-        // Récupérer le texte actuel
-        const currentText = await iframe.evaluate(() => {
-          const body = document.querySelector('body.cke_editable');
-          return body.textContent || '';
-        });
-  
-        // Texte à ajouter
-        const textToInsert = '.qzdqz';
-  
-        // Vérifiez si le texte se termine par un point
-        if (currentText.endsWith('.')) {
-          // Supprimer le point à la fin
-          await iframe.evaluate(() => {
-            const body = document.querySelector('body.cke_editable');
-            body.focus(); // Assurez-vous que l'élément est focalisé
-            document.execCommand('delete'); // Efface le caractère à la position du curseur
-          });
-          console.log('Suppression du point');
-        } else {
-          // Ajouter un point avant d'insérer le nouveau texte
-          await iframe.evaluate((textToInsert) => {
-            const body = document.querySelector('body.cke_editable');
-            body.focus(); // Assurez-vous que l'élément est focalisé
-            document.execCommand('insertText', false, '.'); // Ajoute un point
-          });
-          console.log('Ajout du point');
-        }
-
-        // Appuyer sur le bouton confirmer
+    if (page) {
         try {
-          // 
-          await page.waitForSelector('button#edit_message_save');
-          await page.click('button#edit_message_save');
-          
+            await goToParrainagePostsSpace(page);
+            const numberOfPosts = await getNumberOfPosts(page);
+            console.log(`Number of posts: ${numberOfPosts}`);
+
+            for (let i = 0; i < numberOfPosts; i++) {
+                await editPost(page, i);
+            }
         } catch (error) {
-          throw new Error('L\'élément #edit_message_save n\'a pas été trouvé dans le délai imparti');
+            console.error(`Error in promoteAdByEditing: ${error}`);
+        } finally {
+            await page.browser().close();
         }
-        
-        console.log(`Post modifié avec succès à ${new Date().toLocaleString()}.`);
-
-
-    //   }
-
-  } catch (error) {
-    console.error('Une erreur est survenue:', error), 'à', new Date().toLocaleString();
-  } finally {
-    await browser.close();
-  }
+    }
 }
 
 const schedulePromotion = () => {
-    // Schedule for 10 AM
-    schedule.scheduleJob('5 16 * * *', promoteAdByEditing);
-  
-    // Schedule for 18 PM
-    schedule.scheduleJob('5 18 * * *', promoteAdByEditing);
+    // Schedule at 10 AM and 6 PM every day
+    schedule.scheduleJob('5 14 * * *', promoteAdByEditing);
 
-  };
+    schedule.scheduleJob('5 16 * * *', promoteAdByEditing);
+};
 
 module.exports = { schedulePromotion };
