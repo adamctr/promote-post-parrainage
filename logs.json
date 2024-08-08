@@ -1,0 +1,40 @@
+{"level":"info","message":"Page loaded successfully","status":"success","timestamp":"2024-08-07T23:25:04.319Z"}
+{"level":"info","message":"Page loaded successfully","status":"success","timestamp":"2024-08-07T23:25:42.866Z"}
+{"level":"info","message":"Page loaded successfully","status":"success","timestamp":"2024-08-07T23:26:14.145Z"}
+{"level":"info","message":{"status":"success","type":"connection"},"timestamp":"2024-08-07T23:26:14.730Z"}
+{"level":"info","message":{"status":"success","type":"remontée"},"timestamp":"2024-08-07T23:26:15.295Z"}
+{"level":"info","message":"Page loaded successfully","status":"success","timestamp":"2024-08-07T23:26:26.778Z"}
+{"level":"info","message":{"status":"success","type":"connection"},"timestamp":"2024-08-07T23:26:27.456Z"}
+{"level":"info","message":{"status":"success","type":"remontée"},"timestamp":"2024-08-07T23:26:28.026Z"}
+{"level":"info","message":"Page loaded successfully","status":"success","timestamp":"2024-08-07T23:29:51.101Z"}
+{"level":"error","message":{"error":"error is not defined","status":"error","type":"connection"},"timestamp":"2024-08-07T23:29:51.431Z"}
+{"level":"info","message":"Page loaded successfully","status":"success","timestamp":"2024-08-07T23:30:32.005Z"}
+{"level":"info","message":{"status":"success","type":"connection"},"timestamp":"2024-08-07T23:30:32.400Z"}
+{"level":"info","message":{"status":"success","type":"remontée"},"timestamp":"2024-08-07T23:30:32.586Z"}
+{"level":"info","message":"Page loaded successfully","status":"success","timestamp":"2024-08-07T23:33:01.593Z"}
+{"level":"info","message":{"status":"success","type":"connection"},"timestamp":"2024-08-07T23:33:01.915Z"}
+{"level":"info","message":{"status":"success","type":"remontée"},"timestamp":"2024-08-07T23:33:02.093Z"}
+{"level":"info","message":"Page loaded successfully","status":"success","timestamp":"2024-08-07T23:36:14.659Z"}
+{"level":"info","message":{"status":"success","type":"connection"},"timestamp":"2024-08-07T23:36:14.932Z"}
+{"level":"info","message":{"status":"success","type":"remontée"},"timestamp":"2024-08-07T23:36:15.115Z"}
+{"level":"info","message":"Page loaded successfully","status":"success","timestamp":"2024-08-07T23:38:37.922Z"}
+{"level":"error","message":{"error":"error is not defined","status":"error","type":"connection"},"timestamp":"2024-08-07T23:38:38.141Z"}
+{"level":"info","message":"Page loaded successfully","status":"success","timestamp":"2024-08-07T23:43:36.414Z"}
+{"level":"info","message":{"status":"success","type":"connection"},"timestamp":"2024-08-07T23:43:36.940Z"}
+{"level":"info","message":{"reason":"Navigated to user post page","status":"success"},"timestamp":"2024-08-07T23:43:37.300Z"}
+{"level":"info","message":"Page loaded successfully","status":"success","timestamp":"2024-08-07T23:46:00.666Z"}
+{"level":"info","message":{"status":"success","type":"connection"},"timestamp":"2024-08-07T23:46:01.035Z"}
+{"level":"info","message":{"reason":"Navigated to user post page","status":"success"},"timestamp":"2024-08-07T23:46:01.379Z"}
+{"level":"info","message":"Page loaded successfully","status":"success","timestamp":"2024-08-07T23:47:44.712Z"}
+{"level":"info","message":{"status":"success","type":"connection"},"timestamp":"2024-08-07T23:47:45.018Z"}
+{"level":"info","message":{"reason":"Navigated to user post page","status":"success"},"timestamp":"2024-08-07T23:47:45.368Z"}
+{"level":"info","message":"Found 2 elements to interact with.","status":"success","timestamp":"2024-08-07T23:47:45.514Z","type":"posts"}
+{"level":"info","message":"Number of posts: 2","status":"success","timestamp":"2024-08-07T23:47:45.514Z","type":"promotion"}
+{"level":"info","message":"In jow2 AD","status":"info","timestamp":"2024-08-07T23:47:45.522Z","type":"edit"}
+{"level":"info","message":"Clicked on Edit button for post index 0","status":"success","timestamp":"2024-08-07T23:47:45.547Z","type":"edit"}
+{"level":"info","message":"Added a dot","status":"info","timestamp":"2024-08-07T23:47:46.708Z","type":"edit"}
+{"level":"info","message":"Post jow2 edited successfully","status":"success","timestamp":"2024-08-07T23:47:47.756Z","type":"edit"}
+{"level":"info","message":"In ubereats AD","status":"info","timestamp":"2024-08-07T23:47:47.768Z","type":"edit"}
+{"level":"info","message":"Clicked on Edit button for post index 1","status":"success","timestamp":"2024-08-07T23:47:47.781Z","type":"edit"}
+{"level":"info","message":"Added a dot","status":"info","timestamp":"2024-08-07T23:47:48.957Z","type":"edit"}
+{"level":"info","message":"Post ubereats edited successfully","status":"success","timestamp":"2024-08-07T23:47:50.628Z","type":"edit"}
