@@ -9,10 +9,10 @@ async function connectToAccount() {
     let page = null; // Déclaration en dehors du try
    
     try {
-        browser = await puppeteer.launch({ args: ['--no-sandbox', '--disable-setuid-sandbox'], headless:false, });
+        browser = await puppeteer.launch({ args: ['--no-sandbox', '--disable-setuid-sandbox'], headless:true, });
         page = await browser.newPage();
     
-        await page.setViewport({ width: 400, height: 400 });
+        // await page.setViewport({ width: 400, height: 400 });
         await page.goto('https://www.1parrainage.com/login',{ waitUntil: 'networkidle0' });
 
         logger.info({
@@ -39,7 +39,7 @@ async function connectToAccount() {
         await page.click('input.btn.btn-custom[value="Me connecter"]');
         // await page.waitForNavigation({ waitUntil: 'networkidle0' });
 
-        if (page.url().includes('/espace_parrain')) {
+        if (page.url() && page.url().includes('/espace_parrain')) {
             logger.info({
                 type:'connection',
                 status:'success',
@@ -67,7 +67,7 @@ async function connectToAccount() {
         return null;
     } finally {
         // Close the browser only if an error occurred
-        if (page.url().includes('/espace_parrain') === false) {
+        if (page.url() && page.url().includes('/espace_parrain') === false) {
             await browser.close();
             return { page : null, browser : null};
 
@@ -80,7 +80,7 @@ async function goToParrainagePostsSpace(page) {
         await page.waitForSelector('a[href="/espace_parrain/parrainages/"]');
         await page.click('a[href="/espace_parrain/parrainages/"]');
  
-        if (page.url().includes('/espace_parrain/parrainages')) {
+        if (page.url() && page.url().includes('/espace_parrain/parrainages')) {
             logger.info({
                 status:'success',
                 message: 'Navigated to user post page',
