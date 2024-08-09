@@ -3,7 +3,7 @@ const { combine, timestamp, json, colorize, simple, prettyPrint, printf, align, 
 const consoleloggerLevel = process.env.WINSTON_LOGGER_LEVEL || "info";
 
 const prettyJson = format.printf(info => {
-  if (info.message.constructor === Object) {
+  if (typeof info.message === 'object') {
     info.message = JSON.stringify(info.message, null, 4)
   }
   return `${info.level}: ${info.message}`
