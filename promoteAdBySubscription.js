@@ -53,8 +53,6 @@ async function promoteAdBySubscription() {
   }
 }
 
-promoteAdBySubscription();
-
 const schedulePromotion = () => {
     // Schedule for 8 AM
     schedule.scheduleJob('5 10 * * *', promoteAdBySubscription);
