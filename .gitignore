@@ -6,3 +6,6 @@ node_modules/
 
 # Git Ignore
 .gitignore
+
+# Logs
+.log
