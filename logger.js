@@ -26,14 +26,14 @@ const logger = createLogger({
         }),
         // File transport for logging to a file
         new transports.File({
-            filename: 'combinedlogs.log',
+            filename: 'logs/combinedlogs.log',
             format: combine(
                 timestamp(),   // Add timestamp to each log entry
                 json()         // Format logs as JSON
             )
         }),
         new transports.File({
-          filename: 'app-error.log',
+          filename: 'logs/app-error.log',
           level: 'error',
           format: combine(
               timestamp(),   // Add timestamp to each log entry
@@ -41,7 +41,7 @@ const logger = createLogger({
           )
       }),
       new transports.File({
-        filename: 'app-info.log',
+        filename: 'logs/app-info.log',
         level: 'info',
         format: combine(
             timestamp(),   // Add timestamp to each log entry
