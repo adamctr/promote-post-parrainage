@@ -20,6 +20,7 @@ async function getNumberOfPosts(page) {
             type: 'posts',
             status: 'error',
             error: error.message,
+            message: error.message
         });
     }
 }
@@ -134,19 +135,21 @@ async function promoteAdByEditing() {
     if (page && browser) {
         try {
             await goToParrainagePostsSpace(page);
-            const numberOfPosts = await getNumberOfPosts(page);
-            logger.info({
-                type: 'promotion',
-                status: 'success',
-                message: `Number of posts: ${numberOfPosts}`,
-            });
 
+            const numberOfPosts = await getNumberOfPosts(page);
             for (let i = 0; i < numberOfPosts; i++) {
                 await editPost(page, i);
             }
+
+            logger.info({
+                type: 'promoteByEditing',
+                status: 'success',
+                message: `${numberOfPosts} posts have been edited successfully !`,
+            });
+
         } catch (error) {
             logger.error({
-                type: 'promotion',
+                type: 'promoteByEditing',
                 status: 'error',
                 error: error,
                 message: error.message,
@@ -156,7 +159,7 @@ async function promoteAdByEditing() {
         }
     } else {
         logger.error({
-            type: 'promotion',
+            type: 'promoteByEditing',
             status: 'error',
             message: error.message,
             reason: 'Failed to connect to account',

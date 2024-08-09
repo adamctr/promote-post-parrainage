@@ -2,16 +2,12 @@ const { createLogger, format, transports } = require('winston');
 const { combine, timestamp, json, colorize, simple, prettyPrint, printf, align, splat } = format;
 const consoleloggerLevel = process.env.WINSTON_LOGGER_LEVEL || "info";
 
-const consoleFormat = format.combine(
-    format.colorize(),
-    format.timestamp(),
-    format.align(),
-    format.printf((info) => {
-      return `${info.timestamp} - ${info.level}: ${
-        info.message
-      } ${JSON.stringify(info.metadata)}`;
-    })
-  );
+const prettyJson = format.printf(info => {
+  if (info.message.constructor === Object) {
+    info.message = JSON.stringify(info.message, null, 4)
+  }
+  return `${info.level}: ${info.message}`
+})
 
 // Create a logger instance
 const logger = createLogger({
@@ -20,7 +16,13 @@ const logger = createLogger({
         // Console transport for displaying logs in the console
         new transports.Console({
             level: consoleloggerLevel,
-            format: consoleFormat
+            format: format.combine(
+              format.colorize(),
+              format.prettyPrint(),
+              format.splat(),
+              format.simple(),
+              prettyJson,
+            )
         }),
         // File transport for logging to a file
         new transports.File({

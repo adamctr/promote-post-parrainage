@@ -24,7 +24,7 @@ async function promoteAdBySubscription() {
         await page.waitForSelector('a[href="/espace_parrain/profile/annonces/125780/remonter"]');
       } catch (error) {
         logger.error({
-          type: 'remontée',
+          type: 'promoteBySubscription',
           status: 'failed',
           reason: 'button not available',
           message: error.message,
@@ -33,15 +33,16 @@ async function promoteAdBySubscription() {
       }
   
       // Click to promote the ads 
-      //await page.click('a[href="/espace_parrain/profile/annonces/125780/remonter"]');
+      await page.click('a[href="/espace_parrain/profile/annonces/125780/remonter"]');
       logger.info({
-        type: 'remontée',
+        type: 'promoteBySubscription',
         status: 'success',
+        message: 'Les annonces ont été remontées !'
       });
   
     } catch (error) {
       logger.error({
-        type: 'remontée',
+        type: 'promoteBySubscription',
         status: 'failed',
         error: error.message,
         message: error.message,
@@ -51,6 +52,8 @@ async function promoteAdBySubscription() {
     }
   }
 }
+
+promoteAdBySubscription();
 
 const schedulePromotion = () => {
     // Schedule for 8 AM
