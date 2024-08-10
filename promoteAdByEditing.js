@@ -9,7 +9,7 @@ async function getNumberOfPosts(page) {
     try {
         await page.waitForSelector('a.parrainage_bt.edit');
         const posts = await page.$$('a.parrainage_bt.edit');
-        logger.info({
+        logger.debug({
             type: 'posts',
             status: 'success',
             message: `Found ${posts.length} elements to interact with.`,
@@ -41,7 +41,7 @@ async function editPost(page, postIndex) {
             const imageNameWithExtension = imageUrl.split('/leslogos/')[1];
             const imageName = imageNameWithExtension.split('.')[0];
 
-            logger.info({
+            logger.debug({
                 type: 'edit',
                 status: 'info',
                 message: `In ${imageName} AD`,
@@ -52,7 +52,7 @@ async function editPost(page, postIndex) {
             
             if (editButton) {
                 await editButton.click();
-                logger.info({
+                logger.debug({
                     type: 'edit',
                     status: 'success',
                     message: `Clicked on Edit button for post index ${postIndex}`,
@@ -71,14 +71,14 @@ async function editPost(page, postIndex) {
 
                 if (currentText.endsWith('.')) {
                     await iframe.evaluate(() => document.execCommand('delete', false));
-                    logger.info({
+                    logger.debug({
                         type: 'edit',
                         status: 'info',
                         message: 'Removed the dot at the end',
                     });
                 } else {
                     await iframe.evaluate(() => document.execCommand('insertText', false, '.'));
-                    logger.info({
+                    logger.debug({
                         type: 'edit',
                         status: 'info',
                         message: 'Added a dot',
@@ -89,7 +89,7 @@ async function editPost(page, postIndex) {
                     await page.waitForSelector('button#edit_message_save');
                     await page.click('button#edit_message_save');
                     await page.waitForNavigation({ waitUntil: 'networkidle0' });
-                    logger.info({
+                    logger.debyg({
                         type: 'edit',
                         status: 'success',
                         message: `Post ${imageName} edited successfully`,
@@ -105,14 +105,14 @@ async function editPost(page, postIndex) {
                     await page.goto('https://www.1parrainage.com/espace_parrain/parrainages/', { waitUntil: 'networkidle0' });
                 }
             } else {
-                logger.info({
+                logger.error({
                     type: 'edit',
                     status: 'info',
                     message: `Edit button not found for ${imageName}`,
                 });
             }
         } else {
-            logger.info({
+            logger.debug({
                 type: 'edit',
                 status: 'info',
                 message: `Post index ${postIndex} out of bounds`,

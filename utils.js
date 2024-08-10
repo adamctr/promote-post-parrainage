@@ -15,7 +15,7 @@ async function connectToAccount() {
         // await page.setViewport({ width: 400, height: 400 });
         await page.goto('https://www.1parrainage.com/login',{ waitUntil: 'networkidle0' });
 
-        logger.info({
+        logger.debug({
             status:'success',
             message: 'Page loaded successfully',
         })
@@ -79,7 +79,7 @@ async function goToParrainagePostsSpace(page) {
         await page.click('a[href="/espace_parrain/parrainages/"]');
  
         if (page.url() && page.url().includes('/espace_parrain/parrainages')) {
-            logger.info({
+            logger.debug({
                 status:'success',
                 message: 'Navigated to user post page',
               })
