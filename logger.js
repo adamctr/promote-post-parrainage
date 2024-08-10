@@ -9,6 +9,10 @@ const prettyJson = format.printf(info => {
   return `${info.level}: ${info.message}`
 })
 
+const customTimestamp = timestamp({
+  format: 'YYYY-MM-DD HH:mm'  // Format qui inclut jour, mois, année, heure et minute
+});
+
 // Create a logger instance
 const logger = createLogger({
     level: consoleloggerLevel, // Minimum log level

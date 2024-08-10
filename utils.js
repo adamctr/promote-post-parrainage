@@ -37,25 +37,24 @@ async function connectToAccount() {
         await page.type('#_username', process.env.EMAIL);
         await page.type('#_password', process.env.PASSWORD);
         await page.click('input.btn.btn-custom[value="Me connecter"]');
-        // await page.waitForNavigation({ waitUntil: 'networkidle0' });
+        await page.waitForNavigation({ waitUntil: 'networkidle0' });
 
-        if (page.url() && page.url().includes('/espace_parrain')) {
-            logger.info({
-                type:'connection',
-                status:'success',
-                message: 'URL of the sponsor area accessed',
-            })
-            return { page, browser };
+        // if (page.url() && page.url().includes('/espace_parrain')) {
+        //     logger.info({
+        //         type:'connection',
+        //         status:'success',
+        //         message: 'URL of the sponsor area accessed',
+        //     })
+        //     return { page, browser };
 
-        } else {
-            logger.error({
-                type:'connection',
-                status:'error',
-                error: error.message,
-                message: error.message,
-              })
-            throw new Error('Failed to log in');
-        }
+        // } else {
+        //     logger.error({
+        //         type:'connection',
+        //         status:'error',
+        //         error: error.message,
+        //         message: error.message,
+        //       })
+        // }
 
     } catch (error) {
         logger.error({
