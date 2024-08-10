@@ -37,7 +37,7 @@ async function connectToAccount() {
         await page.type('#_username', process.env.EMAIL);
         await page.type('#_password', process.env.PASSWORD);
         await page.click('input.btn.btn-custom[value="Me connecter"]');
-        await page.waitForNavigation({ waitUntil: 'networkidle0' });
+        await page.waitForSelector('a[href="/espace_parrain/parrainages/"]');
 
         // if (page.url() && page.url().includes('/espace_parrain')) {
         //     logger.info({
@@ -76,7 +76,6 @@ async function connectToAccount() {
 
 async function goToParrainagePostsSpace(page) {
     try {
-        await page.waitForSelector('a[href="/espace_parrain/parrainages/"]');
         await page.click('a[href="/espace_parrain/parrainages/"]');
  
         if (page.url() && page.url().includes('/espace_parrain/parrainages')) {
