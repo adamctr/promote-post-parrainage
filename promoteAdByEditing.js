@@ -117,6 +117,8 @@ async function editPost(page, postIndex) {
                         status: 'success',
                         message: `Post ${imageName} edited successfully`,
                     });
+
+                    return true;
                 } catch (error) {
                     logger.error({
                         type: 'edit',
@@ -125,7 +127,6 @@ async function editPost(page, postIndex) {
                         message: error.message,
                         error: error,
                     });
-                    await page.goto('https://www.1parrainage.com/espace_parrain/parrainages/', { waitUntil: 'networkidle0' });
                 }
             } else {
                 logger.error({
@@ -160,15 +161,34 @@ async function promoteAdByEditing() {
             await goToParrainagePostsSpace(page);
 
             const numberOfPosts = await getNumberOfPosts(page);
+            let editPostError = 0;
             for (let i = 0; i < numberOfPosts; i++) {
-                await editPost(page, i);
+                try {
+                    await editPost(page, i);
+                } catch(err) {
+                    editPostError++;
+                }
             }
 
-            logger.info({
-                type: 'promoteByEditing',
-                status: 'success',
-                message: `${numberOfPosts} posts have been edited successfully !`,
-            });
+            if (numberOfPosts - editPostError === 0) {
+                logger.info({
+                    type: 'promoteByEditing',
+                    status: 'success',
+                    message: `${numberOfPosts} posts have been edited successfully`,
+                });
+            } else if (editPostError > 0 && numberOfPosts < editPostError) {
+                logger.warn({
+                    type: 'promoteByEditing',
+                    message: `${numberOfPosts - editPostError} posts have been edited successfully but ${editPostError} posts editing failed`,
+                });
+            } else {
+                logger.error({
+                    type: 'promoteByEditing',
+                    message: `All posts editing failed ${numberOfPosts}`,
+                });
+            }
+
+
 
         } catch (error) {
             logger.error({
@@ -189,6 +209,8 @@ async function promoteAdByEditing() {
         });
     }
 }
+
+promoteAdByEditing();
 
 // Planification des promotions
 const schedulePromotion = () => {
