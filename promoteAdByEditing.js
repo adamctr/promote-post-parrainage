@@ -60,24 +60,47 @@ async function editPost(page, postIndex) {
                 
                 await page.waitForNavigation({ waitUntil: 'networkidle0' });
 
+                // Edit de l'annonce
+
                 await page.waitForSelector('iframe.cke_wysiwyg_frame');
                 const iframeElementHandle = await page.$('iframe.cke_wysiwyg_frame');
                 const iframe = await iframeElementHandle.contentFrame();
 
                 await iframe.waitForSelector('body.cke_editable');
-                await iframe.focus('body.cke_editable');
 
                 const currentText = await iframe.evaluate(() => document.body.textContent.trim());
+                await iframe.focus('body.cke_editable');
+
+                // Mettre le curseur à la fin
+                
+                await iframe.evaluate(() => {
+
+                    const editorBody = document.querySelector('body.cke_editable');
+                
+                    // Créer une plage de texte
+                    const range = document.createRange();
+                
+                    // Sélectionner le dernier nœud et positionner le curseur à la fin
+                    range.selectNodeContents(editorBody);
+                    range.collapse(false);
+                
+                    // Créer une sélection pour déplacer le curseur
+                    const selection = window.getSelection();
+                    selection.removeAllRanges();
+                    selection.addRange(range);
+                });
+
+                // Si Point à la fin, l'enlever sinon le rajouter
 
                 if (currentText.endsWith('.')) {
-                    await iframe.evaluate(() => document.execCommand('delete', false));
+                    //await iframe.evaluate(() => document.execCommand('delete', false));
                     logger.debug({
                         type: 'edit',
                         status: 'info',
                         message: 'Removed the dot at the end',
                     });
                 } else {
-                    await iframe.evaluate(() => document.execCommand('insertText', false, '.'));
+                    //await iframe.evaluate(() => document.execCommand('insertText', false, '.'));
                     logger.debug({
                         type: 'edit',
                         status: 'info',
