@@ -89,7 +89,7 @@ async function editPost(page, postIndex) {
                     await page.waitForSelector('button#edit_message_save');
                     await page.click('button#edit_message_save');
                     await page.waitForNavigation({ waitUntil: 'networkidle0' });
-                    logger.debyg({
+                    logger.debug({
                         type: 'edit',
                         status: 'success',
                         message: `Post ${imageName} edited successfully`,

@@ -9,7 +9,7 @@ async function connectToAccount() {
     let page = null; // Déclaration en dehors du try
    
     try {
-        browser = await puppeteer.launch({ args: ['--no-sandbox', '--disable-setuid-sandbox'], headless:true, });
+        browser = await puppeteer.launch({ args: ['--no-sandbox', '--disable-setuid-sandbox'], headless:false, });
         page = await browser.newPage();
     
         // await page.setViewport({ width: 400, height: 400 });
@@ -38,14 +38,14 @@ async function connectToAccount() {
         await page.type('#_password', process.env.PASSWORD);
         await page.click('input.btn.btn-custom[value="Me connecter"]');
         await page.waitForSelector('a[href="/espace_parrain/parrainages/"]');
-
+        
+        return { page, browser };
         // if (page.url() && page.url().includes('/espace_parrain')) {
         //     logger.info({
         //         type:'connection',
         //         status:'success',
         //         message: 'URL of the sponsor area accessed',
         //     })
-        //     return { page, browser };
 
         // } else {
         //     logger.error({
@@ -63,7 +63,7 @@ async function connectToAccount() {
             error: error.message,
             message: error.message,
         });
-        return null;
+        return { page : null, browser : null};
     } finally {
         // Close the browser only if an error occurred
         if (page.url() && page.url().includes('/espace_parrain') === false) {
