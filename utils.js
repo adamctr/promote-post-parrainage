@@ -1,12 +1,12 @@
 require('dotenv').config();
 const puppeteer = require('puppeteer');
 const fs = require('fs')
-const logger = require('./logger');  // Importer le logger configuré
+const logger = require('./logger'); 
 
 
 async function connectToAccount() {
-    let browser = null; // Déclaration en dehors du try
-    let page = null; // Déclaration en dehors du try
+    let browser = null; 
+    let page = null; 
    
     try {
         browser = await puppeteer.launch({ args: ['--no-sandbox', '--disable-setuid-sandbox'], headless:false, });
@@ -40,21 +40,6 @@ async function connectToAccount() {
         await page.waitForSelector('a[href="/espace_parrain/parrainages/"]');
         
         return { page, browser };
-        // if (page.url() && page.url().includes('/espace_parrain')) {
-        //     logger.info({
-        //         type:'connection',
-        //         status:'success',
-        //         message: 'URL of the sponsor area accessed',
-        //     })
-
-        // } else {
-        //     logger.error({
-        //         type:'connection',
-        //         status:'error',
-        //         error: error.message,
-        //         message: error.message,
-        //       })
-        // }
 
     } catch (error) {
         logger.error({
@@ -99,4 +84,4 @@ async function goToParrainagePostsSpace(page) {
     }
 }
 
-module.exports = { goToParrainagePostsSpace, connectToAccount  };
+module.exports = { goToParrainagePostsSpace, connectToAccount };

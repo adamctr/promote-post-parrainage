@@ -37,7 +37,7 @@ async function promoteAdBySubscription() {
       logger.info({
         type: 'promoteBySubscription',
         status: 'success',
-        message: 'Les annonces ont été remontées !'
+        message: 'The ads were successfully uploaded using the button !'
       });
   
     } catch (error) {

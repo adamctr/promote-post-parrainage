@@ -6,7 +6,7 @@ const scheduleAllPromotions = () => {
     schedulePromotionAdBySubscription();
     schedulePromotionAdByEditing();
 
-    logger.info('La programmation des promotions de posts est en cours !' , {status:'success'})
+    logger.info('Post promotions are currently being programmed !' , {status:'success'})
 };
 
 scheduleAllPromotions();

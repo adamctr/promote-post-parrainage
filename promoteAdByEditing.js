@@ -4,7 +4,7 @@ const schedule = require('node-schedule');
 const logger = require('./logger.js');
 const { connectToAccount, goToParrainagePostsSpace } = require('./utils.js');
 
-// Fonction pour obtenir le nombre de posts
+// Function to obtain the number of posts
 async function getNumberOfPosts(page) {
     try {
         await page.waitForSelector('a.parrainage_bt.edit');
@@ -25,7 +25,7 @@ async function getNumberOfPosts(page) {
     }
 }
 
-// Fonction pour éditer un post
+// Function to edit a post
 async function editPost(page, postIndex) {
     try {
         await page.waitForSelector('.coupon-list.list-wrapper');
@@ -60,7 +60,7 @@ async function editPost(page, postIndex) {
                 
                 await page.waitForNavigation({ waitUntil: 'networkidle0' });
 
-                // Edit de l'annonce
+                // Edit ad
 
                 await page.waitForSelector('iframe.cke_wysiwyg_frame');
                 const iframeElementHandle = await page.$('iframe.cke_wysiwyg_frame');
@@ -71,36 +71,36 @@ async function editPost(page, postIndex) {
                 const currentText = await iframe.evaluate(() => document.body.textContent.trim());
                 await iframe.focus('body.cke_editable');
 
-                // Mettre le curseur à la fin
+                // Set cursor to end
                 
                 await iframe.evaluate(() => {
 
                     const editorBody = document.querySelector('body.cke_editable');
                 
-                    // Créer une plage de texte
+                    // Create a text range
                     const range = document.createRange();
                 
-                    // Sélectionner le dernier nœud et positionner le curseur à la fin
+                    // Select the last node and position the cursor at the end
                     range.selectNodeContents(editorBody);
                     range.collapse(false);
                 
-                    // Créer une sélection pour déplacer le curseur
+                    // Create a selection to move the cursor
                     const selection = window.getSelection();
                     selection.removeAllRanges();
                     selection.addRange(range);
                 });
 
-                // Si Point à la fin, l'enlever sinon le rajouter
+                // If Point at the end, remove it otherwise add it
 
                 if (currentText.endsWith('.')) {
-                    //await iframe.evaluate(() => document.execCommand('delete', false));
+                    await iframe.evaluate(() => document.execCommand('delete', false));
                     logger.debug({
                         type: 'edit',
                         status: 'info',
                         message: 'Removed the dot at the end',
                     });
                 } else {
-                    //await iframe.evaluate(() => document.execCommand('insertText', false, '.'));
+                    await iframe.evaluate(() => document.execCommand('insertText', false, '.'));
                     logger.debug({
                         type: 'edit',
                         status: 'info',
@@ -152,7 +152,7 @@ async function editPost(page, postIndex) {
     }
 }
 
-// Fonction principale pour promouvoir les annonces par édition
+// Main function to promote advertisements by edition
 async function promoteAdByEditing() {
     const { page, browser } = await connectToAccount();
 
@@ -174,7 +174,7 @@ async function promoteAdByEditing() {
                 logger.info({
                     type: 'promoteByEditing',
                     status: 'success',
-                    message: `${numberOfPosts} posts have been edited successfully`,
+                    message: `The ads (${numberOfPosts}) have been successfully uploaded thanks to the modification !`,
                 });
             } else if (editPostError > 0 && numberOfPosts < editPostError) {
                 logger.warn({
@@ -184,7 +184,7 @@ async function promoteAdByEditing() {
             } else {
                 logger.error({
                     type: 'promoteByEditing',
-                    message: `All posts editing failed ${numberOfPosts}`,
+                    message: `All posts editing failed (${numberOfPosts})`,
                 });
             }
 
@@ -208,9 +208,7 @@ async function promoteAdByEditing() {
     }
 }
 
-promoteAdByEditing();
-
-// Planification des promotions
+// Promotion planning
 const schedulePromotion = () => {
     // Schedule at 2 PM and 4 PM every day
     schedule.scheduleJob('5 14 * * *', promoteAdByEditing);
