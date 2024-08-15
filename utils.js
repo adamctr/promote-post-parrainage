@@ -9,7 +9,7 @@ async function connectToAccount() {
     let page = null; // Déclaration en dehors du try
    
     try {
-        browser = await puppeteer.launch({ args: ['--no-sandbox', '--disable-setuid-sandbox'], headless:true, });
+        browser = await puppeteer.launch({ args: ['--no-sandbox', '--disable-setuid-sandbox'], headless:false, });
         page = await browser.newPage();
     
         // await page.setViewport({ width: 400, height: 400 });
@@ -76,7 +76,7 @@ async function connectToAccount() {
 
 async function goToParrainagePostsSpace(page) {
     try {
-        await page.click('a[href="/espace_parrain/parrainages/"]');
+        await page.goto('https://www.1parrainage.com/espace_parrain/parrainages/');
  
         if (page.url() && page.url().includes('/espace_parrain/parrainages')) {
             logger.debug({

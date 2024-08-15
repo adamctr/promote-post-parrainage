@@ -170,7 +170,7 @@ async function promoteAdByEditing() {
                 }
             }
 
-            if (numberOfPosts - editPostError === 0) {
+            if (numberOfPosts - editPostError === numberOfPosts) {
                 logger.info({
                     type: 'promoteByEditing',
                     status: 'success',
@@ -187,8 +187,6 @@ async function promoteAdByEditing() {
                     message: `All posts editing failed ${numberOfPosts}`,
                 });
             }
-
-
 
         } catch (error) {
             logger.error({
