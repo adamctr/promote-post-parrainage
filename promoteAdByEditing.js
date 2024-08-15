@@ -49,7 +49,7 @@ async function editPost(page, postIndex) {
 
             await page.waitForSelector('a.parrainage_bt.edit');
             const editButton = await coupon.$('a.parrainage_bt.edit');
-            
+                
             if (editButton) {
                 await editButton.click();
                 logger.debug({
@@ -92,23 +92,22 @@ async function editPost(page, postIndex) {
 
                 // If Point at the end, remove it otherwise add it
 
-                if (currentText.endsWith('.')) {
-                    await iframe.evaluate(() => document.execCommand('delete', false));
-                    logger.debug({
-                        type: 'edit',
-                        status: 'info',
-                        message: 'Removed the dot at the end',
-                    });
-                } else {
-                    await iframe.evaluate(() => document.execCommand('insertText', false, '.'));
-                    logger.debug({
-                        type: 'edit',
-                        status: 'info',
-                        message: 'Added a dot',
-                    });
-                }
+                    if (currentText.endsWith('.')) {
+                        await iframe.evaluate(() => document.execCommand('delete', false));
+                        logger.debug({
+                            type: 'edit',
+                            status: 'info',
+                            message: 'Removed the dot at the end',
+                        });
+                    } else {
+                        await iframe.evaluate(() => document.execCommand('insertText', false, '.'));
+                        logger.debug({
+                            type: 'edit',
+                            status: 'info',
+                            message: 'Added a dot',
+                        });
+                    }
 
-                try {
                     await page.waitForSelector('button#edit_message_save');
                     await page.click('button#edit_message_save');
                     await page.waitForNavigation({ waitUntil: 'networkidle0' });
@@ -119,21 +118,7 @@ async function editPost(page, postIndex) {
                     });
 
                     return true;
-                } catch (error) {
-                    logger.error({
-                        type: 'edit',
-                        status: 'failed',
-                        reason: `Failed to save ${imageName} post`,
-                        message: error.message,
-                        error: error,
-                    });
-                }
-            } else {
-                logger.error({
-                    type: 'edit',
-                    status: 'info',
-                    message: `Edit button not found for ${imageName}`,
-                });
+
             }
         } else {
             logger.debug({
@@ -149,6 +134,7 @@ async function editPost(page, postIndex) {
             error: error,
             message: error.message,
         });
+        throw new Error;
     }
 }
 
@@ -167,6 +153,7 @@ async function promoteAdByEditing() {
                     await editPost(page, i);
                 } catch(err) {
                     editPostError++;
+                    await goToParrainagePostsSpace(page);
                 }
             }
 
@@ -174,7 +161,7 @@ async function promoteAdByEditing() {
                 logger.info({
                     type: 'promoteByEditing',
                     status: 'success',
-                    message: `The ads (${numberOfPosts}) have been successfully uploaded thanks to the modification !`,
+                    message: `The ads (${numberOfPosts}) have been successfully up thanks to the modification !`,
                 });
             } else if (editPostError > 0 && numberOfPosts < editPostError) {
                 logger.warn({

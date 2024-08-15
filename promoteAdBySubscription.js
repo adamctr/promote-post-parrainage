@@ -37,7 +37,7 @@ async function promoteAdBySubscription() {
       logger.info({
         type: 'promoteBySubscription',
         status: 'success',
-        message: 'The ads were successfully uploaded using the button !'
+        message: 'The ads were successfully up using the button !'
       });
   
     } catch (error) {
