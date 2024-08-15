@@ -9,7 +9,7 @@ async function connectToAccount() {
     let page = null; 
    
     try {
-        browser = await puppeteer.launch({ args: ['--no-sandbox', '--disable-setuid-sandbox'], headless:false, });
+        browser = await puppeteer.launch({ args: ['--no-sandbox', '--disable-setuid-sandbox'], headless:true, });
         page = await browser.newPage();
     
         // await page.setViewport({ width: 400, height: 400 });
