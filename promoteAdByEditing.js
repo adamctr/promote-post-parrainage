@@ -198,7 +198,7 @@ async function promoteAdByEditing() {
 // Promotion planning
 const schedulePromotion = () => {
     // Schedule at 2 PM and 4 PM every day
-    schedule.scheduleJob('5 14 * * *', promoteAdByEditing);
+    schedule.scheduleJob('5 22 * * *', promoteAdByEditing);
     schedule.scheduleJob('5 16 * * *', promoteAdByEditing);
 };
 
