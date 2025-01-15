@@ -9,7 +9,7 @@ async function connectToAccount() {
     let page = null; 
    
     try {
-        browser = await puppeteer.launch({ args: ['--no-sandbox', '--disable-setuid-sandbox'], headless:true, });
+        browser = await puppeteer.launch({ args: ['--no-sandbox', '--disable-setuid-sandbox'], headless:false, });
         page = await browser.newPage();
     
         // await page.setViewport({ width: 400, height: 400 });
@@ -36,7 +36,11 @@ async function connectToAccount() {
         // Inputs of connections entered
         await page.type('#_username', process.env.EMAIL);
         await page.type('#_password', process.env.PASSWORD);
-        await page.click('input.btn.btn-custom[value="Me connecter"]');
+        // Attendre que l'élément soit visible et interactif
+        await page.waitForSelector('input[value="Je me connecte"]', { visible: true });
+
+        // Cliquer sur l'élément
+        await page.click('input[value="Je me connecte"]');        
         await page.waitForSelector('a[href="/espace_parrain/parrainages/"]');
         
         return { page, browser };
@@ -83,5 +87,8 @@ async function goToParrainagePostsSpace(page) {
           })
     }
 }
+
+connectToAccount();
+
 
 module.exports = { goToParrainagePostsSpace, connectToAccount };

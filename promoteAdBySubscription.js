@@ -53,6 +53,7 @@ async function promoteAdBySubscription() {
   }
 }
 
+
 const schedulePromotion = () => {
     // Schedule for 8 AM
     schedule.scheduleJob('5 9 * * *', promoteAdBySubscription);
@@ -62,6 +63,7 @@ const schedulePromotion = () => {
   
     // Schedule for 4 PM
     schedule.scheduleJob('5 18 * * *', promoteAdBySubscription);
+
   };
   
 module.exports = { schedulePromotion };
