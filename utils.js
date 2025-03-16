@@ -9,7 +9,7 @@ async function connectToAccount() {
     let page = null; 
    
     try {
-        browser = await puppeteer.launch({ args: ['--no-sandbox', '--disable-setuid-sandbox'], headless:true, });
+        browser = await puppeteer.launch({ args: ['--no-sandbox', '--disable-setuid-sandbox'], headless: process.env.ENVIRONMENT === 'production' });
         page = await browser.newPage();
     
         // await page.setViewport({ width: 400, height: 400 });
@@ -87,8 +87,5 @@ async function goToParrainagePostsSpace(page) {
           })
     }
 }
-
-connectToAccount();
-
 
 module.exports = { goToParrainagePostsSpace, connectToAccount };

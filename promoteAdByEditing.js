@@ -28,121 +28,209 @@ async function getNumberOfPosts(page) {
 // Function to edit a post
 async function editPost(page, postIndex) {
     try {
-        await page.waitForSelector('.coupon-list.list-wrapper');
-        const couponElements = await page.$$('[class="coupon-list list-wrapper"]');
+        logger.debug({
+            type: 'edit',
+            status: 'info',
+            message: 'Début de la fonction editPost'
+        });
 
-        if (postIndex < couponElements.length) {
-            const coupon = couponElements[postIndex];
-            const imageUrl = await coupon.evaluate((coupon) => {
-                const imgElement = coupon.querySelector('img');
-                return imgElement.src;
-            });
-
-            const imageNameWithExtension = imageUrl.split('/leslogos/')[1];
-            const imageName = imageNameWithExtension.split('.')[0];
-
+        // Attendre 3 secondes de manière plus robuste
+        await page.evaluate(() => new Promise(resolve => setTimeout(resolve, 3000)));
+        logger.debug({
+            type: 'edit',
+            status: 'success',
+            message: 'Attente de 3 secondes terminée'
+        });
+        
+        // Attendre que les éléments de la liste soient chargés
+        await page.waitForSelector('.coupon-list.list-wrapper-table .coupon-wrapper');
+        logger.debug({
+            type: 'edit',
+            status: 'success',
+            message: 'Éléments de la liste chargés avec succès'
+        });
+        
+        // Obtenir tous les boutons d'édition directement
+        const editButtons = await page.$$('a.parrainage_bt.edit[href*="/edit/"]');
+        logger.debug({
+            type: 'edit',
+            status: 'info',
+            message: `Nombre de boutons d'édition trouvés: ${editButtons.length}`
+        });
+        
+        if (postIndex < editButtons.length) {
+            // Obtenir l'URL du bouton avant de cliquer
+            const editUrl = await editButtons[postIndex].evaluate(button => button.href);
             logger.debug({
                 type: 'edit',
                 status: 'info',
-                message: `In ${imageName} AD`,
+                message: `URL d'édition: ${editUrl}`
+            });
+            
+            // Cliquer sur le bouton d'édition
+            await Promise.all([
+                page.waitForNavigation({ waitUntil: 'networkidle0', timeout: 60000 }),
+                editButtons[postIndex].click()
+            ]);
+            logger.debug({
+                type: 'edit',
+                status: 'success',
+                message: "Navigation vers la page d'édition réussie"
             });
 
-            await page.waitForSelector('a.parrainage_bt.edit');
-            const editButton = await coupon.$('a.parrainage_bt.edit');
-                
-            if (editButton) {
-                await editButton.click();
-                logger.debug({
+            // Vérifier que nous sommes bien sur la page d'édition
+            const currentUrl = page.url();
+            logger.debug({
+                type: 'edit',
+                status: 'info',
+                message: `URL actuelle: ${currentUrl}`
+            });
+
+            // Attendre que l'iframe soit chargée
+            await page.waitForSelector('iframe.cke_wysiwyg_frame', { timeout: 30000 });
+            logger.debug({
+                type: 'edit',
+                status: 'success',
+                message: 'Iframe trouvée'
+            });
+
+            const iframeElementHandle = await page.$('iframe.cke_wysiwyg_frame');
+            if (!iframeElementHandle) {
+                logger.error({
                     type: 'edit',
-                    status: 'success',
-                    message: `Clicked on Edit button for post index ${postIndex}`,
+                    status: 'error',
+                    message: 'Impossible de trouver l\'iframe'
                 });
-                
-                await page.waitForNavigation({ waitUntil: 'networkidle0' });
+                throw new Error('Editor iframe not found');
+            }
+            logger.debug({
+                type: 'edit',
+                status: 'success',
+                message: 'Handle de l\'iframe obtenu'
+            });
 
-                // Edit ad
-
-                await page.waitForSelector('iframe.cke_wysiwyg_frame');
-                const iframeElementHandle = await page.$('iframe.cke_wysiwyg_frame');
-                const iframe = await iframeElementHandle.contentFrame();
-
-                await iframe.waitForSelector('body.cke_editable');
-
-                const currentText = await iframe.evaluate(() => document.body.textContent.trim());
-                await iframe.focus('body.cke_editable');
-
-                // Set cursor to end
-                
-                await iframe.evaluate(() => {
-
-                    const editorBody = document.querySelector('body.cke_editable');
-                
-                    // Create a text range
-                    const range = document.createRange();
-                
-                    // Select the last node and position the cursor at the end
-                    range.selectNodeContents(editorBody);
-                    range.collapse(false);
-                
-                    // Create a selection to move the cursor
-                    const selection = window.getSelection();
-                    selection.removeAllRanges();
-                    selection.addRange(range);
+            const iframe = await iframeElementHandle.contentFrame();
+            if (!iframe) {
+                logger.error({
+                    type: 'edit',
+                    status: 'error',
+                    message: 'Impossible d\'accéder au contenu de l\'iframe'
                 });
+                throw new Error('Could not access iframe content');
+            }
+            logger.debug({
+                type: 'edit',
+                status: 'success',
+                message: 'Accès au contenu de l\'iframe réussi'
+            });
 
-                // If Point at the end, remove it otherwise add it
+            // Attendre que le contenu de l'éditeur soit chargé
+            await iframe.waitForSelector('body.cke_editable', { timeout: 30000 });
+            logger.debug({
+                type: 'edit',
+                status: 'success',
+                message: 'Corps de l\'éditeur chargé'
+            });
 
-                    if (currentText.endsWith('.')) {
-                        await iframe.evaluate(() => document.execCommand('delete', false));
-                        logger.debug({
-                            type: 'edit',
-                            status: 'info',
-                            message: 'Removed the dot at the end',
-                        });
-                    } else {
-                        await iframe.evaluate(() => document.execCommand('insertText', false, '.'));
-                        logger.debug({
-                            type: 'edit',
-                            status: 'info',
-                            message: 'Added a dot',
-                        });
-                    }
+            const currentText = await iframe.evaluate(() => document.body.textContent.trim());
+            logger.debug({
+                type: 'edit',
+                status: 'info',
+                message: `Texte actuel: ${currentText.substring(0, 50)}...`
+            });
 
-                    await page.waitForSelector('button#edit_message_save');
-                    await page.click('button#edit_message_save');
-                    await page.waitForNavigation({ waitUntil: 'networkidle0' });
+            await iframe.focus('body.cke_editable');
+            logger.debug({
+                type: 'edit',
+                status: 'success',
+                message: 'Focus sur l\'éditeur réussi'
+            });
+
+            // Positionner le curseur à la fin
+            await iframe.evaluate(() => {
+                const editorBody = document.querySelector('body.cke_editable');
+                const range = document.createRange();
+                range.selectNodeContents(editorBody);
+                range.collapse(false);
+                const selection = window.getSelection();
+                selection.removeAllRanges();
+                selection.addRange(range);
+            });
+            logger.debug({
+                type: 'edit',
+                status: 'success',
+                message: 'Curseur positionné à la fin'
+            });
+
+            // Ajouter ou supprimer le point
+            try {
+                if (currentText.endsWith('.')) {
+                    await iframe.evaluate(() => document.execCommand('delete', false));
                     logger.debug({
                         type: 'edit',
                         status: 'success',
-                        message: `Post ${imageName} edited successfully`,
+                        message: 'Point supprimé avec succès'
                     });
-
-                    return true;
-
+                } else {
+                    await iframe.evaluate(() => document.execCommand('insertText', false, '.'));
+                    logger.debug({
+                        type: 'edit',
+                        status: 'success',
+                        message: 'Point ajouté avec succès'
+                    });
+                }
+            } catch (error) {
+                logger.error({
+                    type: 'edit',
+                    status: 'error',
+                    message: `Erreur lors de la modification du texte: ${error.message}`
+                });
+                throw error;
             }
+
+            // Sauvegarder les modifications
+            try {
+                await page.waitForSelector('button#edit_message_save', { timeout: 30000 });
+                await page.click('button#edit_message_save');
+                await page.waitForNavigation({ waitUntil: 'networkidle0', timeout: 60000 });
+                logger.debug({
+                    type: 'edit',
+                    status: 'success',
+                    message: 'Modifications sauvegardées avec succès'
+                });
+            } catch (error) {
+                logger.error({
+                    type: 'edit',
+                    status: 'error',
+                    message: `Erreur lors de la sauvegarde: ${error.message}`
+                });
+                throw error;
+            }
+
+            return true;
         } else {
             logger.debug({
                 type: 'edit',
                 status: 'info',
-                message: `Post index ${postIndex} out of bounds`,
+                message: `Post index ${postIndex} hors limites`
             });
+            return false;
         }
     } catch (error) {
         logger.error({
             type: 'edit',
             status: 'error',
             error: error,
-            message: error.message,
+            stack: error.stack,
+            message: `Erreur complète dans editPost: ${error.message}`
         });
-        throw new Error;
+        throw error;
     }
 }
 
 // Main function to promote advertisements by edition
-async function promoteAdByEditing() {
-    const { page, browser } = await connectToAccount();
-
-    if (page && browser) {
+async function promoteAdByEditing(page) {
+    if (page) {
         try {
             await goToParrainagePostsSpace(page);
 
@@ -182,24 +270,26 @@ async function promoteAdByEditing() {
                 error: error,
                 message: error.message,
             });
-        } finally {
-            await browser.close();
         }
     } else {
         logger.error({
             type: 'promoteByEditing',
             status: 'error',
-            message: error.message,
+            message: 'Page instance not provided',
             reason: 'Failed to connect to account',
         });
     }
 }
 
 // Promotion planning
-const schedulePromotion = () => {
+const schedulePromotion = (page, browser) => {
     // Schedule at 2 PM and 4 PM every day
-    schedule.scheduleJob('5 22 * * *', promoteAdByEditing);
-    schedule.scheduleJob('5 16 * * *', promoteAdByEditing);
+    const job1 = schedule.scheduleJob('5 22 * * *', async () => {
+        await promoteAdByEditing(page);
+    });
+    const job2 = schedule.scheduleJob('5 16 * * *', async () => {
+        await promoteAdByEditing(page);
+    });
 };
 
-module.exports = { schedulePromotion };
+module.exports = { schedulePromotion, promoteAdByEditing };
