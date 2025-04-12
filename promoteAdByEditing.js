@@ -87,14 +87,14 @@ async function editPost(page, postIndex) {
             });
 
             // Attendre que l'iframe soit chargée
-            await page.waitForSelector('iframe.cke_wysiwyg_frame', { timeout: 30000 });
+            await page.waitForSelector('iframe[title^="Éditeur de texte enrichi"]', { timeout: 30000 });
             logger.debug({
                 type: 'edit',
                 status: 'success',
                 message: 'Iframe trouvée'
             });
 
-            const iframeElementHandle = await page.$('iframe.cke_wysiwyg_frame');
+            const iframeElementHandle = await page.$('iframe[title^="Éditeur de texte enrichi"]');
             if (!iframeElementHandle) {
                 logger.error({
                     type: 'edit',
