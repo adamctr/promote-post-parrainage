@@ -1,6 +1,6 @@
 const { schedulePromotion: schedulePromotionAdBySubscription, promoteAdBySubscription } = require('./promoteAdBySubscription');
 const { schedulePromotion: schedulePromotionAdByEditing, promoteAdByEditing } = require('./promoteAdByEditing');
-const { connectToAccount } = require('./utils');
+const { connectToAccount, setupGoogleVignetteRemoval } = require('./utils');
 const logger = require('./logger')
 require('dotenv').config();
 

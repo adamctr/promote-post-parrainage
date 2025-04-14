@@ -1,7 +1,7 @@
 const puppeteer = require('puppeteer');
 const schedule = require('node-schedule');
 const logger = require('./logger');  // Importer le logger configuré
-const { connectToAccount } = require('./utils.js');
+const { connectToAccount, setupGoogleVignetteRemoval } = require('./utils.js');
 
 // Function to get the profile ID
 async function getProfileId(page) {

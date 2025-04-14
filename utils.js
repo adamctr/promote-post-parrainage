@@ -3,6 +3,85 @@ const puppeteer = require('puppeteer');
 const fs = require('fs')
 const logger = require('./logger'); 
 
+/**
+ * Ferme automatiquement la pop-up Google Vignette
+ * @param {Page} page - L'instance de page Puppeteer
+ */
+async function setupGoogleVignetteRemoval(page) {
+    if (!page) return;
+    
+    try {
+        // Injecter un script qui détectera et fermera la popup Google Vignette
+        await page.evaluateOnNewDocument(() => {
+            // Observer les changements dans le DOM
+            const observer = new MutationObserver(() => {
+                // Vérifier si l'URL contient #google_vignette
+                if (window.location.hash === '#google_vignette') {
+                    // Rechercher le bouton de fermeture
+                    const dismissButton = document.querySelector('#dismiss-button');
+                    if (dismissButton) {
+                        console.log('[Utils] Bouton de fermeture Google Vignette trouvé, clic en cours...');
+                        dismissButton.click();
+                        console.log('[Utils] Clic sur le bouton de fermeture effectué');
+                        
+                        // Nettoyer l'URL
+                        if (window.location.hash === '#google_vignette') {
+                            history.replaceState(null, '', window.location.pathname + window.location.search);
+                            console.log('[Utils] Fragment #google_vignette supprimé de l\'URL');
+                        }
+                    } else {
+                        console.log('[Utils] Bouton de fermeture non trouvé, nouvelle tentative dans 500ms');
+                        // Réessayer après un court délai car le bouton peut ne pas être immédiatement disponible
+                        setTimeout(() => {
+                            const retryDismissButton = document.querySelector('#dismiss-button');
+                            if (retryDismissButton) {
+                                retryDismissButton.click();
+                                console.log('[Utils] Clic sur le bouton de fermeture effectué (2ème tentative)');
+                                
+                                // Nettoyer l'URL
+                                if (window.location.hash === '#google_vignette') {
+                                    history.replaceState(null, '', window.location.pathname + window.location.search);
+                                    console.log('[Utils] Fragment #google_vignette supprimé de l\'URL (2ème tentative)');
+                                }
+                            }
+                        }, 500);
+                    }
+                }
+            });
+            
+            // Observer tous les changements dans le DOM
+            observer.observe(document, { childList: true, subtree: true });
+            
+            // Vérifier si la popup est déjà présente lors du chargement initial
+            if (window.location.hash === '#google_vignette') {
+                console.log('[Utils] Fragment #google_vignette détecté dans l\'URL initiale');
+                setTimeout(() => {
+                    const dismissButton = document.querySelector('#dismiss-button');
+                    if (dismissButton) {
+                        dismissButton.click();
+                        console.log('[Utils] Clic sur le bouton de fermeture effectué (chargement initial)');
+                        
+                        // Nettoyer l'URL
+                        history.replaceState(null, '', window.location.pathname + window.location.search);
+                        console.log('[Utils] Fragment #google_vignette supprimé de l\'URL initiale');
+                    }
+                }, 1000);
+            }
+        });
+        
+        logger.debug({
+            type: 'navigation',
+            status: 'success',
+            message: 'Protection contre Google Vignette activée'
+        });
+    } catch (error) {
+        logger.error({
+            type: 'navigation',
+            status: 'error',
+            message: `Erreur lors de la configuration anti-vignette: ${error.message}`
+        });
+    }
+}
 
 async function connectToAccount() {
     let browser = null; 
@@ -12,6 +91,9 @@ async function connectToAccount() {
         browser = await puppeteer.launch({ args: ['--no-sandbox', '--disable-setuid-sandbox'], headless: process.env.ENVIRONMENT === 'production' });
         page = await browser.newPage();
     
+        // Ajouter la protection contre #google_vignette
+        await setupGoogleVignetteRemoval(page);
+        
         await page.goto('https://www.1parrainage.com/login', { waitUntil: 'networkidle0' });
 
         logger.debug({
@@ -51,8 +133,6 @@ async function connectToAccount() {
         await page.waitForSelector('input[type="submit"][value="Je me connecte"]', { visible: true });
         await page.click('input[type="submit"][value="Je me connecte"]');
 
-        // Attendre la redirection vers l'espace parrain
-        await page.waitForSelector('a[href="/espace_parrain/parrainages/"]', { timeout: 30000 });
         
         logger.debug({
             type: 'connection',
@@ -104,4 +184,4 @@ async function goToParrainagePostsSpace(page) {
     }
 }
 
-module.exports = { goToParrainagePostsSpace, connectToAccount };
+module.exports = { goToParrainagePostsSpace, connectToAccount, setupGoogleVignetteRemoval };

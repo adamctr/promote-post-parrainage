@@ -2,7 +2,7 @@ require('dotenv').config();
 const puppeteer = require('puppeteer');
 const schedule = require('node-schedule');
 const logger = require('./logger.js');
-const { connectToAccount, goToParrainagePostsSpace } = require('./utils.js');
+const { connectToAccount, goToParrainagePostsSpace, setupGoogleVignetteRemoval } = require('./utils.js');
 
 // Function to obtain the number of posts
 async function getNumberOfPosts(page) {
