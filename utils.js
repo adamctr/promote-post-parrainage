@@ -95,7 +95,7 @@ async function connectToAccount() {
     let page = null; 
    
     try {
-        browser = await puppeteer.launch({ args: ['--no-sandbox', '--disable-setuid-sandbox'], headless: process.env.ENVIRONMENT === 'production' });
+        browser = await puppeteer.launch({ executablePath: '/snap/bin/chromium', args: ['--no-sandbox', '--disable-setuid-sandbox'], headless: process.env.ENV === 'production' });
         page = await browser.newPage();
     
         // Ajouter la protection contre #google_vignette
