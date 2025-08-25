@@ -1,8 +1,15 @@
 require('dotenv').config();
-const puppeteer = require('puppeteer');
 const fs = require('fs')
 const logger = require('./logger'); 
-
+const puppeteer = require('puppeteer-extra')
+const { DEFAULT_INTERCEPT_RESOLUTION_PRIORITY } = require('puppeteer')
+const AdblockerPlugin = require('puppeteer-extra-plugin-adblocker')
+puppeteer.use(
+  AdblockerPlugin({
+    // Optionally enable Cooperative Mode for several request interceptors
+    interceptResolutionPriority: DEFAULT_INTERCEPT_RESOLUTION_PRIORITY
+  })
+)
 /**
  * Ferme automatiquement la pop-up Google Vignette
  * @param {Page} page - L'instance de page Puppeteer

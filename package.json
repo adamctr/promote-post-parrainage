@@ -14,7 +14,9 @@
     "fs": "^0.0.1-security",
     "node-schedule": "^2.1.1",
     "pm2": "^5.4.2",
-    "puppeteer": "^22.14.0",
+    "puppeteer": "^22.15.0",
+    "puppeteer-extra": "^3.3.6",
+    "puppeteer-extra-plugin-adblocker": "^2.13.6",
     "winston": "^3.13.1"
   }
 }
