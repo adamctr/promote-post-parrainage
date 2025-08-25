@@ -8,11 +8,32 @@ let globalBrowser = null;
 let globalPage = null;
 
 const initBrowser = async () => {
-    const { page, browser } = await connectToAccount();
-    globalBrowser = browser;
-    globalPage = page;
-    return { page, browser };
-};
+    try {
+      const { page, browser } = await connectToAccount();
+      globalBrowser = browser;
+      globalPage = page;
+  
+      if (!page || !browser) {
+        logger.error('initBrowser: Puppeteer returned undefined page or browser', {
+          page,
+          browser
+        });
+        return { page: undefined, browser: undefined };
+      }
+  
+      return { page, browser };
+    } catch (err) {
+      // Log complet pour PM2 : message + stack + toute l'erreur
+      logger.error('initBrowser: Failed to initialize browser', {
+        message: err.message,
+        stack: err.stack,
+        errorObject: err
+      });
+  
+      return { page: undefined, browser: undefined };
+    }
+  };
+  
 
 const instantPromote = async () => {
     const { page, browser } = await initBrowser();
