@@ -91,80 +91,84 @@ async function setupGoogleVignetteRemoval(page) {
 }
 
 async function connectToAccount() {
-    let browser = null; 
-    let page = null; 
-   
+    let browser = null;
+    let page = null;
+  
     try {
-        browser = await puppeteer.launch({ executablePath: '/snap/bin/chromium', args: ['--no-sandbox', '--disable-setuid-sandbox'], headless: process.env.ENV === 'production' });
-        page = await browser.newPage();
-    
-        // Ajouter la protection contre #google_vignette
-        await setupGoogleVignetteRemoval(page);
-        
-        await page.goto('https://www.1parrainage.com/login', { waitUntil: 'networkidle0' });
-
-        logger.debug({
-            type: 'connection',
-            status: 'success',
-            message: 'Page de login chargée avec succès'
+      browser = await puppeteer.launch({
+        executablePath: '/snap/bin/chromium',
+        headless: process.env.ENV === 'production' ? 'new' : false,
+        args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-gpu', '--disable-software-rasterizer', '--disable-dev-shm-usage']
+      });
+  
+      page = await browser.newPage();
+  
+      // Ajouter la protection contre #google_vignette
+      await setupGoogleVignetteRemoval(page);
+  
+      await page.goto('https://www.1parrainage.com/login', { waitUntil: 'networkidle0' });
+  
+      logger.debug({
+        type: 'connection',
+        status: 'success',
+        message: 'Page de login chargée avec succès'
+      });
+  
+      // Gestion des cookies
+      try {
+        await page.waitForFunction(() => {
+          const buttons = Array.from(document.querySelectorAll('button'));
+          return buttons.some(button => button.textContent.includes('Tout accepter'));
+        }, { timeout: 5000 }).catch(() => {});
+  
+        await page.evaluate(() => {
+          const buttons = Array.from(document.querySelectorAll('button'));
+          const acceptButton = buttons.find(button => button.textContent.includes('Tout accepter'));
+          if (acceptButton) acceptButton.click();
         });
-
-        try {
-            // Gestion des cookies en utilisant le texte du bouton plutôt que des classes
-            await page.waitForFunction(() => {
-                const buttons = Array.from(document.querySelectorAll('button'));
-                return buttons.some(button => button.textContent.includes('Tout accepter'));
-            }, { timeout: 5000 }).catch(() => {});
-            
-            await page.evaluate(() => {
-                const buttons = Array.from(document.querySelectorAll('button'));
-                const acceptButton = buttons.find(button => button.textContent.includes('Tout accepter'));
-                if (acceptButton) acceptButton.click();
-            });
-            
-            await page.waitForTimeout(1000); // Attendre que la modal disparaisse
-        } catch (error) {
-            logger.debug({
-                type: 'cookies',
-                status: 'info',
-                message: 'Pas de bannière de cookies ou erreur: ' + error.message
-            });
-        }
-
-        // Saisie des identifiants
-        await page.waitForSelector('input[name="_username"]');
-        await page.type('input[name="_username"]', process.env.EMAIL);
-        await page.type('input[name="_password"]', process.env.PASSWORD);
-
-        // Attendre que le bouton de connexion soit visible et cliquable
-        await page.waitForSelector('input[type="submit"][value="Je me connecte"]', { visible: true });
-        await page.click('input[type="submit"][value="Je me connecte"]');
-
-        
+  
+        await page.waitForTimeout(1000); // Attendre que la modal disparaisse
+      } catch (error) {
         logger.debug({
-            type: 'connection',
-            status: 'success',
-            message: 'Connexion réussie'
+          type: 'cookies',
+          status: 'info',
+          message: 'Pas de bannière de cookies ou erreur: ' + error.message
         });
-
-        return { page, browser };
-
+      }
+  
+      // Saisie des identifiants
+      await page.waitForSelector('input[name="_username"]');
+      await page.type('input[name="_username"]', process.env.EMAIL);
+      await page.type('input[name="_password"]', process.env.PASSWORD);
+  
+      await page.waitForSelector('input[type="submit"][value="Je me connecte"]', { visible: true });
+      await page.click('input[type="submit"][value="Je me connecte"]');
+  
+      logger.debug({
+        type: 'connection',
+        status: 'success',
+        message: 'Connexion réussie'
+      });
+  
+      return { page, browser };
+  
     } catch (error) {
-        logger.error({
-            type: 'connection',
-            status: 'error',
-            error: error.message,
-            message: `Erreur lors de la connexion: ${error.message}`,
-        });
-        return { page: null, browser: null };
-    } finally {
-        // Fermer le navigateur uniquement en cas d'erreur de connexion
-        if (page && page.url() && !page.url().includes('/espace_parrain')) {
-            await browser.close();
-            return { page: null, browser: null };
-        }
+      // Log complet de l'erreur
+      logger.error('connectToAccount: Failed to initialize browser or login', {
+        message: error.message,
+        stack: error.stack,
+        errorObject: error
+      });
+  
+      // Fermer le navigateur si il a été lancé
+      if (browser) {
+        try { await browser.close(); } catch (_) {}
+      }
+  
+      return { page: null, browser: null };
     }
-}
+  }
+  
 
 async function goToParrainagePostsSpace(page) {
     try {
