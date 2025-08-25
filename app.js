@@ -66,7 +66,6 @@ const scheduleAllPromotions = async () => {
       logger.error('Error initializing browser: ' + err.message, { status: 'error', stack: err.stack });
     }
   };
-  
 
 if (process.env.ENV === 'production') {
     scheduleAllPromotions();
