@@ -24,6 +24,8 @@ const instantPromote = async () => {
         } finally {
             await browser.close();
         }
+    } else {
+        logger.error('Failed to initialize browser for instant promotion.', { status: 'error' });
     }
 };
 
@@ -33,6 +35,8 @@ const scheduleAllPromotions = async () => {
         schedulePromotionAdBySubscription(page, browser);
         schedulePromotionAdByEditing(page, browser);
         logger.info('Post promotions are currently being programmed !', { status: 'success' });
+    } else {
+        logger.error('Failed to initialize browser for scheduling promotions.', { status: 'error' });
     }
 };
 
