@@ -95,12 +95,23 @@ async function connectToAccount() {
     let page = null;
   
     try {
-      browser = await puppeteer.launch({
-        executablePath: '/snap/bin/chromium',
+    const launchOptions = {
         headless: process.env.ENV === 'production' ? 'new' : false,
-        args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-gpu', '--disable-software-rasterizer', '--disable-dev-shm-usage']
-      });
-  
+        args: [
+            '--no-sandbox',
+            '--disable-setuid-sandbox',
+            '--disable-gpu',
+            '--disable-software-rasterizer',
+            '--disable-dev-shm-usage'
+        ]
+    };
+        
+    // Ajouter executablePath uniquement en production
+    if (process.env.ENV === 'production') {
+    launchOptions.executablePath = '/snap/bin/chromium';
+    }
+        
+    browser = await puppeteer.launch(launchOptions);
       page = await browser.newPage();
   
       // Ajouter la protection contre #google_vignette
