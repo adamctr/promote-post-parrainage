@@ -30,15 +30,22 @@ const instantPromote = async () => {
 };
 
 const scheduleAllPromotions = async () => {
-    const { page, browser } = await initBrowser();
-    if (page && browser) {
+    try {
+      const { page, browser } = await initBrowser();
+  
+      if (page && browser) {
         schedulePromotionAdBySubscription(page, browser);
         schedulePromotionAdByEditing(page, browser);
         logger.info('Post promotions are currently being programmed !', { status: 'success' });
-    } else {
+      } else {
         logger.error('Failed to initialize browser for scheduling promotions.', { status: 'error' });
+      }
+    } catch (err) {
+      // Ici tu captures toutes les erreurs d'init, même si page/browser n'existent pas
+      logger.error('Error initializing browser: ' + err.message, { status: 'error', stack: err.stack });
     }
-};
+  };
+  
 
 if (process.env.ENV === 'production') {
     scheduleAllPromotions();
