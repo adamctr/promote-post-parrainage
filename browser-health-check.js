@@ -5,11 +5,7 @@
  * Tests if Puppeteer can launch Chrome successfully in the current environment
  */
 
-const puppeteer = require('puppeteer-extra');
-const StealthPlugin = require('puppeteer-extra-plugin-stealth');
-
-// Use stealth plugin
-puppeteer.use(StealthPlugin());
+const puppeteer = require('puppeteer'); // Utiliser puppeteer standard sans extensions
 
 async function healthCheck() {
     console.log('🔍 Starting browser health check...');

@@ -6,7 +6,9 @@
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "test-report": "node testDailyReportSend.js",
-    "send-report": "node -e \"require('./reportScheduler').sendImmediateReport()\""
+    "send-report": "node -e \"require('./reportScheduler').sendImmediateReport()\"",
+    "clean-logs": "node clean-logs-advanced.js",
+    "logs-info": "node logs-info.js"
   },
   "keywords": [],
   "author": "",
@@ -21,6 +23,7 @@
     "puppeteer-extra": "^3.3.6",
     "puppeteer-extra-plugin-adblocker": "^2.13.6",
     "puppeteer-extra-plugin-stealth": "^2.11.2",
-    "winston": "^3.13.1"
+    "winston": "^3.13.1",
+    "winston-daily-rotate-file": "^5.0.0"
   }
 }
