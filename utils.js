@@ -252,12 +252,13 @@ async function connectToAccount() {
           await page.waitForSelector('input[type="submit"][value="Je me connecte"]', { visible: true });
           logger.debug('Login button found');
           
-          // Vérifier l'état du formulaire avant soumission - analyser TOUS les formulaires
+          // Vérifier l'état du formulaire avant soumission - analyser TOUS les formulaires + CSRF
           const formState = await page.evaluate(() => {
               const allForms = Array.from(document.querySelectorAll('form'));
               const submitButton = document.querySelector('input[type="submit"][value="Je me connecte"]');
               const usernameField = document.querySelector('input[name="_username"]');
               const passwordField = document.querySelector('input[name="_password"]');
+              const csrfField = document.querySelector('input[name="_csrf_token"]');
               
               // Trouver le formulaire qui contient les champs de connexion
               const loginForm = allForms.find(form => 
@@ -273,11 +274,27 @@ async function connectToAccount() {
                   submitButtonExists: !!submitButton,
                   submitButtonDisabled: submitButton ? submitButton.disabled : null,
                   usernameValue: usernameField ? usernameField.value.length : 0,
-                  passwordValue: passwordField ? passwordField.value.length : 0
+                  passwordValue: passwordField ? passwordField.value.length : 0,
+                  csrfTokenExists: !!csrfField,
+                  csrfTokenValue: csrfField ? csrfField.value.substring(0, 20) + '...' : null,
+                  csrfTokenLength: csrfField ? csrfField.value.length : 0
               };
           });
           
           logger.debug(`Form state before submission: ${JSON.stringify(formState, null, 2)}`);
+          
+          // Vérifier la validité du token CSRF avant soumission
+          if (!formState.csrfTokenExists || formState.csrfTokenLength === 0) {
+              logger.debug('No CSRF token found, refreshing page to get token');
+              await page.reload({ waitUntil: 'networkidle0' });
+              
+              // Ressaisir les identifiants après actualisation
+              await page.waitForSelector('input[name="_username"]');
+              await page.type('input[name="_username"]', process.env.EMAIL);
+              await page.type('input[name="_password"]', process.env.PASSWORD);
+              
+              logger.debug('Page refreshed and credentials re-entered');
+          }
           
           // Vérifier que nous allons soumettre le bon formulaire
           if (formState.loginFormExists && formState.loginFormAction && 
@@ -296,7 +313,31 @@ async function connectToAccount() {
                       const loginForm = usernameField.closest('form');
                       if (loginForm) {
                           console.log('Submitting correct login form:', loginForm.action);
-                          loginForm.submit();
+                          
+                          try {
+                              // Méthode 1: submit() standard
+                              if (typeof loginForm.submit === 'function') {
+                                  loginForm.submit();
+                              } else {
+                                  // Méthode 2: requestSubmit() moderne
+                                  if (typeof loginForm.requestSubmit === 'function') {
+                                      loginForm.requestSubmit();
+                                  } else {
+                                      // Méthode 3: déclencher l'événement submit
+                                      const submitEvent = new Event('submit', { bubbles: true, cancelable: true });
+                                      loginForm.dispatchEvent(submitEvent);
+                                  }
+                              }
+                          } catch (error) {
+                              console.error('Error submitting form:', error);
+                              // Méthode 4: créer et cliquer sur un bouton de soumission temporaire
+                              const tempSubmit = document.createElement('input');
+                              tempSubmit.type = 'submit';
+                              tempSubmit.style.display = 'none';
+                              loginForm.appendChild(tempSubmit);
+                              tempSubmit.click();
+                              loginForm.removeChild(tempSubmit);
+                          }
                       }
                   }
               });
@@ -326,7 +367,7 @@ Session cookies: ${JSON.stringify(sessionCookies.map(c => ({ name: c.name, domai
           if (urlAfterClick.includes('/login')) {
               logger.debug('Still on login page, trying alternative form submission methods');
               
-              // Méthode alternative 1: soumettre le BON formulaire (celui qui contient les champs de connexion)
+              // Méthode alternative 1: soumettre le BON formulaire avec gestion d'erreur
               await page.evaluate(() => {
                   const usernameField = document.querySelector('input[name="_username"]');
                   const passwordField = document.querySelector('input[name="_password"]');
@@ -336,7 +377,31 @@ Session cookies: ${JSON.stringify(sessionCookies.map(c => ({ name: c.name, domai
                       const loginForm = usernameField.closest('form');
                       if (loginForm) {
                           console.log('Submitting correct login form:', loginForm.action);
-                          loginForm.submit();
+                          
+                          try {
+                              // Méthode 1: submit() standard
+                              if (typeof loginForm.submit === 'function') {
+                                  loginForm.submit();
+                              } else {
+                                  // Méthode 2: requestSubmit() moderne
+                                  if (typeof loginForm.requestSubmit === 'function') {
+                                      loginForm.requestSubmit();
+                                  } else {
+                                      // Méthode 3: déclencher l'événement submit
+                                      const submitEvent = new Event('submit', { bubbles: true, cancelable: true });
+                                      loginForm.dispatchEvent(submitEvent);
+                                  }
+                              }
+                          } catch (error) {
+                              console.error('Error submitting form:', error);
+                              // Méthode 4: créer et cliquer sur un bouton de soumission temporaire
+                              const tempSubmit = document.createElement('input');
+                              tempSubmit.type = 'submit';
+                              tempSubmit.style.display = 'none';
+                              loginForm.appendChild(tempSubmit);
+                              tempSubmit.click();
+                              loginForm.removeChild(tempSubmit);
+                          }
                       }
                   }
               });
@@ -433,11 +498,60 @@ Session cookies: ${JSON.stringify(sessionCookies.map(c => ({ name: c.name, domai
           if (currentUrlAfterLogin.includes('/login')) {
               // Essayer de voir s'il y a un message d'erreur sur la page
               const errorMessage = await page.evaluate(() => {
-                  const errorElements = document.querySelectorAll('.error, .alert, .message, [class*="error"], [class*="alert"]');
-                  return Array.from(errorElements).map(el => el.textContent).join(' | ');
+                  const errorElements = document.querySelectorAll('.error, .alert, .message, [class*="error"], [class*="alert"], .text-danger, .invalid-feedback');
+                  return Array.from(errorElements).map(el => el.textContent.trim()).filter(text => text).join(' | ');
               }).catch(() => 'Unable to check for error messages');
               
-              throw new Error(`Login failed - still on login page: ${currentUrlAfterLogin}. Page errors: ${errorMessage}`);
+              // Vérifier spécifiquement les erreurs CSRF
+              const csrfError = errorMessage.toLowerCase().includes('csrf') || 
+                               errorMessage.toLowerCase().includes('token') ||
+                               errorMessage.toLowerCase().includes('expired') ||
+                               errorMessage.toLowerCase().includes('invalid');
+              
+              if (csrfError) {
+                  logger.debug('CSRF token error detected, refreshing page to get new token');
+                  
+                  // Actualiser la page pour obtenir un nouveau token CSRF
+                  await page.reload({ waitUntil: 'networkidle0' });
+                  
+                  // Ressaisir les identifiants
+                  await page.waitForSelector('input[name="_username"]');
+                  await page.evaluate(() => {
+                      document.querySelector('input[name="_username"]').value = '';
+                      document.querySelector('input[name="_password"]').value = '';
+                  });
+                  await page.type('input[name="_username"]', process.env.EMAIL);
+                  await page.type('input[name="_password"]', process.env.PASSWORD);
+                  
+                  // Vérifier le nouveau token CSRF
+                  const newCsrfInfo = await page.evaluate(() => {
+                      const csrfField = document.querySelector('input[name="_csrf_token"]');
+                      return {
+                          exists: !!csrfField,
+                          value: csrfField ? csrfField.value.substring(0, 20) + '...' : null,
+                          length: csrfField ? csrfField.value.length : 0
+                      };
+                  });
+                  
+                  logger.debug(`New CSRF token after refresh: ${JSON.stringify(newCsrfInfo, null, 2)}`);
+                  
+                  // Essayer de soumettre à nouveau avec le nouveau token
+                  const submitButton = await page.$('input[type="submit"][value="Je me connecte"]');
+                  if (submitButton) {
+                      await submitButton.click();
+                      
+                      // Attendre et vérifier le résultat
+                      await new Promise(resolve => setTimeout(resolve, 3000));
+                      const finalUrl = page.url();
+                      
+                      if (!finalUrl.includes('/login')) {
+                          logger.debug('Login successful after CSRF token refresh');
+                          return; // Succès après actualisation
+                      }
+                  }
+              }
+              
+              throw new Error(`Login failed - still on login page: ${currentUrlAfterLogin}. Page errors: ${errorMessage}. CSRF error: ${csrfError}`);
           }
           
           logger.debug(`Login completed successfully - New URL: ${currentUrlAfterLogin}`);
