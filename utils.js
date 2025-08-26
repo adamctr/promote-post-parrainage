@@ -82,10 +82,11 @@ async function setupGoogleVignetteRemoval(page) {
             message: 'Protection contre Google Vignette activée'
         });
     } catch (error) {
-        logger.error({
-            type: 'navigation',
-            status: 'error',
-            message: `Erreur lors de la configuration anti-vignette: ${error.message}`
+        logger.error('setupGoogleVignetteRemoval: Failed to setup Google Vignette protection', {
+            message: error.message,
+            stack: error.stack,
+            name: error.name,
+            errorObject: error
         });
     }
 }
@@ -112,13 +113,61 @@ async function connectToAccount() {
     launchOptions.executablePath = '/snap/bin/chromium';
     }
         
-    browser = await puppeteer.launch(launchOptions);
-      page = await browser.newPage();
+    try {
+        browser = await puppeteer.launch(launchOptions);
+        logger.debug('Browser launched successfully');
+    } catch (launchError) {
+        logger.error('connectToAccount: Failed to launch browser', {
+            message: launchError.message,
+            stack: launchError.stack,
+            name: launchError.name,
+            launchOptions: launchOptions,
+            errorObject: launchError
+        });
+        throw launchError;
+    }
+
+    try {
+        page = await browser.newPage();
+        logger.debug('New page created successfully');
+    } catch (pageError) {
+        logger.error('connectToAccount: Failed to create new page', {
+            message: pageError.message,
+            stack: pageError.stack,
+            name: pageError.name,
+            errorObject: pageError
+        });
+        throw pageError;
+    }
   
       // Ajouter la protection contre #google_vignette
-      await setupGoogleVignetteRemoval(page);
+      try {
+          await setupGoogleVignetteRemoval(page);
+          logger.debug('Google Vignette protection setup completed');
+      } catch (vignetteError) {
+          logger.error('connectToAccount: Failed to setup Google Vignette protection', {
+              message: vignetteError.message,
+              stack: vignetteError.stack,
+              name: vignetteError.name,
+              errorObject: vignetteError
+          });
+          // Continue même si la protection anti-vignette échoue
+      }
   
-      await page.goto('https://www.1parrainage.com/login', { waitUntil: 'networkidle0' });
+      try {
+          await page.goto('https://www.1parrainage.com/login', { waitUntil: 'networkidle0' });
+          logger.debug('Successfully navigated to login page');
+      } catch (navigationError) {
+          logger.error('connectToAccount: Failed to navigate to login page', {
+              message: navigationError.message,
+              stack: navigationError.stack,
+              name: navigationError.name,
+              targetUrl: 'https://www.1parrainage.com/login',
+              currentUrl: page.url(),
+              errorObject: navigationError
+          });
+          throw navigationError;
+      }
   
       logger.debug({
         type: 'connection',
@@ -141,20 +190,53 @@ async function connectToAccount() {
   
         await page.waitForTimeout(1000); // Attendre que la modal disparaisse
       } catch (error) {
-        logger.debug({
-          type: 'cookies',
-          status: 'info',
-          message: 'Pas de bannière de cookies ou erreur: ' + error.message
+        logger.error('connectToAccount: Failed to handle cookies banner', {
+          message: error.message,
+          stack: error.stack,
+          name: error.name,
+          errorObject: error
         });
       }
   
       // Saisie des identifiants
-      await page.waitForSelector('input[name="_username"]');
-      await page.type('input[name="_username"]', process.env.EMAIL);
-      await page.type('input[name="_password"]', process.env.PASSWORD);
+      try {
+          await page.waitForSelector('input[name="_username"]');
+          logger.debug('Username input field found');
+          
+          await page.type('input[name="_username"]', process.env.EMAIL);
+          logger.debug('Email typed successfully');
+          
+          await page.type('input[name="_password"]', process.env.PASSWORD);
+          logger.debug('Password typed successfully');
+      } catch (inputError) {
+          logger.error('connectToAccount: Failed to fill login credentials', {
+              message: inputError.message,
+              stack: inputError.stack,
+              name: inputError.name,
+              currentUrl: page.url(),
+              emailProvided: !!process.env.EMAIL,
+              passwordProvided: !!process.env.PASSWORD,
+              errorObject: inputError
+          });
+          throw inputError;
+      }
   
-      await page.waitForSelector('input[type="submit"][value="Je me connecte"]', { visible: true });
-      await page.click('input[type="submit"][value="Je me connecte"]');
+      try {
+          await page.waitForSelector('input[type="submit"][value="Je me connecte"]', { visible: true });
+          logger.debug('Login button found');
+          
+          await page.click('input[type="submit"][value="Je me connecte"]');
+          logger.debug('Login button clicked');
+      } catch (submitError) {
+          logger.error('connectToAccount: Failed to click login button', {
+              message: submitError.message,
+              stack: submitError.stack,
+              name: submitError.name,
+              currentUrl: page.url(),
+              errorObject: submitError
+          });
+          throw submitError;
+      }
   
       logger.debug({
         type: 'connection',
@@ -174,7 +256,17 @@ async function connectToAccount() {
   
       // Fermer le navigateur si il a été lancé
       if (browser) {
-        try { await browser.close(); } catch (_) {}
+        try { 
+            await browser.close(); 
+            logger.debug('Browser closed during error cleanup');
+        } catch (closeError) {
+            logger.error('connectToAccount: Failed to close browser during cleanup', {
+                message: closeError.message,
+                stack: closeError.stack,
+                name: closeError.name,
+                errorObject: closeError
+            });
+        }
       }
   
       return { page: null, browser: null };
@@ -184,24 +276,59 @@ async function connectToAccount() {
 
   async function goToParrainagePostsSpace(page) {
     try {
-        await page.goto('https://www.1parrainage.com/espace_parrain/parrainages/');
+        if (!page) {
+            throw new Error('Page object is null or undefined');
+        }
 
-        if (page.url() && page.url().includes('/espace_parrain/parrainages')) {
+        logger.debug('Starting navigation to parrainage posts space');
+        
+        try {
+            await page.goto('https://www.1parrainage.com/espace_parrain/parrainages/', { 
+                waitUntil: 'networkidle0',
+                timeout: 30000
+            });
+            logger.debug('Navigation completed successfully');
+        } catch (navigationError) {
+            logger.error('goToParrainagePostsSpace: Failed to navigate to URL', {
+                message: navigationError.message,
+                stack: navigationError.stack,
+                name: navigationError.name,
+                targetUrl: 'https://www.1parrainage.com/espace_parrain/parrainages/',
+                currentUrl: page.url(),
+                errorObject: navigationError
+            });
+            throw navigationError;
+        }
+
+        const currentUrl = page.url();
+        if (currentUrl && currentUrl.includes('/espace_parrain/parrainages')) {
             logger.debug({
                 status:'success',
-                message: 'Navigated to user post page',
+                message: 'Successfully navigated to parrainage posts page',
+                currentUrl: currentUrl
             });
         } else {
             // Lève une erreur pour que le catch la capture
-            throw new Error('Failed to navigate to the user post page');
+            const urlError = new Error(`Failed to navigate to the user post page. Expected URL pattern '/espace_parrain/parrainages' but got '${currentUrl}'`);
+            logger.error('goToParrainagePostsSpace: URL validation failed', {
+                message: urlError.message,
+                expectedPattern: '/espace_parrain/parrainages',
+                actualUrl: currentUrl,
+                targetUrl: 'https://www.1parrainage.com/espace_parrain/parrainages/',
+                errorObject: urlError
+            });
+            throw urlError;
         }
     } catch (error) {
-        logger.error({
-            status:'error',
-            reason: 'Error in goToParrainagePostsSpace',
-            error: error.message,
+        logger.error('goToParrainagePostsSpace: Failed to navigate to parrainage posts space', {
             message: error.message,
+            stack: error.stack,
+            name: error.name,
+            currentUrl: page ? page.url() : 'unknown',
+            targetUrl: 'https://www.1parrainage.com/espace_parrain/parrainages/',
+            errorObject: error
         });
+        throw error; // Re-throw pour que l'appelant puisse gérer l'erreur
     }
 }
 
