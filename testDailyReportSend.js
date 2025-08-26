@@ -9,15 +9,44 @@ async function testDailyReport() {
     // Simuler quelques statistiques
     console.log('📊 Simulation des statistiques...');
     
-    // Simuler des exécutions
-    dailyReportService.recordExecutionStart();
-    dailyReportService.recordExecutionSuccess(5, 3, 15000); // 5 posts traités, 3 promus, 15s
+    // Simuler des données horaires variées pour une journée complète
+    const now = new Date();
+    const originalHour = now.getHours();
     
-    dailyReportService.recordExecutionStart();
-    dailyReportService.recordExecutionSuccess(7, 5, 12000); // 7 posts traités, 5 promus, 12s
+    // Simuler l'activité de différentes heures
+    const simulateHourlyData = [
+        { hour: 8, successes: 2, failures: 0, posts: 8 },
+        { hour: 9, successes: 1, failures: 1, posts: 4 },
+        { hour: 10, successes: 3, failures: 0, posts: 12 },
+        { hour: 14, successes: 1, failures: 0, posts: 6 },
+        { hour: 15, successes: 0, failures: 1, posts: 0 },
+        { hour: 16, successes: 2, failures: 1, posts: 10 },
+        { hour: originalHour, successes: 1, failures: 0, posts: 3 } // Heure actuelle
+    ];
     
+    // Appliquer les données simulées
+    simulateHourlyData.forEach(({ hour, successes, failures, posts }) => {
+        // Simuler l'heure en modifiant temporairement getHours()
+        const originalGetHours = Date.prototype.getHours;
+        Date.prototype.getHours = function() { return hour; };
+        
+        for (let i = 0; i < successes; i++) {
+            dailyReportService.recordExecutionStart();
+            dailyReportService.recordExecutionSuccess(posts / successes, posts / successes, 10000 + Math.random() * 10000);
+        }
+        
+        for (let i = 0; i < failures; i++) {
+            dailyReportService.recordExecutionStart();
+            dailyReportService.recordExecutionFailure(new Error(`Test: Erreur à ${hour}h`), 5000 + Math.random() * 5000);
+        }
+        
+        // Restaurer la méthode originale
+        Date.prototype.getHours = originalGetHours;
+    });
+    
+    // Ajouter les données actuelles
     dailyReportService.recordExecutionStart();
-    dailyReportService.recordExecutionFailure(new Error('Test: Connexion échouée'), 8000); // Échec après 8s
+    dailyReportService.recordExecutionSuccess(5, 3, 15000);
     
     // Simuler les nouvelles statistiques détaillées
     dailyReportService.recordPostsEdited(8, 7); // 8 posts édités, 7 avec succès

@@ -31,10 +31,28 @@ class DailyReportService {
             weeklyStats: {
                 totalPosts: 0,
                 totalPromotions: 0
-            }
+            },
+            hourlyActivity: this.initializeHourlyActivity()
         };
         
         this.setupTransporter();
+    }
+
+    // Initialiser l'activité horaire (24 heures)
+    initializeHourlyActivity() {
+        const activity = {};
+        for (let hour = 0; hour < 24; hour++) {
+            activity[hour] = {
+                executions: 0,
+                successes: 0,
+                failures: 0,
+                postsProcessed: 0,
+                postsPromoted: 0,
+                lastActivity: null,
+                status: 'inactive' // inactive, success, failure, mixed
+            };
+        }
+        return activity;
     }
 
     setupTransporter() {
@@ -60,11 +78,34 @@ class DailyReportService {
     recordExecutionStart() {
         this.stats.scriptExecutions++;
         this.stats.lastExecutionTime = new Date();
+        
+        // Tracking horaire
+        const currentHour = new Date().getHours();
+        this.stats.hourlyActivity[currentHour].executions++;
+        this.stats.hourlyActivity[currentHour].lastActivity = new Date();
+        
         logger.info('DAILY_STATS', { 
             action: 'execution_start', 
             timestamp: this.stats.lastExecutionTime,
+            hour: currentHour,
             totalExecutions: this.stats.scriptExecutions 
         });
+    }
+
+    // Mettre à jour le statut d'une heure
+    updateHourlyStatus(hour) {
+        const hourData = this.stats.hourlyActivity[hour];
+        if (hourData.failures > 0 && hourData.successes > 0) {
+            hourData.status = 'mixed';
+        } else if (hourData.failures > 0) {
+            hourData.status = 'failure';
+        } else if (hourData.successes > 0) {
+            hourData.status = 'success';
+        } else if (hourData.executions > 0) {
+            hourData.status = 'running';
+        } else {
+            hourData.status = 'inactive';
+        }
     }
 
     // Enregistrer le succès d'une exécution
@@ -74,11 +115,20 @@ class DailyReportService {
         this.stats.postsPromoted += postsPromoted;
         this.stats.executionTimes.push(duration);
         
+        // Tracking horaire
+        const currentHour = new Date().getHours();
+        this.stats.hourlyActivity[currentHour].successes++;
+        this.stats.hourlyActivity[currentHour].postsProcessed += postsProcessed;
+        this.stats.hourlyActivity[currentHour].postsPromoted += postsPromoted;
+        this.stats.hourlyActivity[currentHour].lastActivity = new Date();
+        this.updateHourlyStatus(currentHour);
+        
         logger.info('DAILY_STATS', { 
             action: 'execution_success', 
             postsProcessed,
             postsPromoted,
             duration,
+            hour: currentHour,
             totalSuccessful: this.stats.successfulExecutions 
         });
     }
@@ -93,10 +143,17 @@ class DailyReportService {
             stack: error.stack || null
         });
         
+        // Tracking horaire
+        const currentHour = new Date().getHours();
+        this.stats.hourlyActivity[currentHour].failures++;
+        this.stats.hourlyActivity[currentHour].lastActivity = new Date();
+        this.updateHourlyStatus(currentHour);
+        
         logger.error('DAILY_STATS', { 
             action: 'execution_failure', 
             error: error.message || error,
             duration,
+            hour: currentHour,
             totalFailed: this.stats.failedExecutions 
         });
     }
@@ -425,11 +482,159 @@ class DailyReportService {
             font-weight: 500;
         }
         
+        .hourly-timeline {
+            background: #ffffff;
+            border-radius: 12px;
+            padding: 24px;
+            border: 1px solid #E5E7EB;
+            margin-bottom: 20px;
+        }
+        
+        .timeline-grid {
+            display: grid;
+            grid-template-columns: repeat(24, 1fr);
+            gap: 4px;
+            margin-bottom: 16px;
+        }
+        
+        .hour-block {
+            text-align: center;
+            position: relative;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+        
+        .hour-dot {
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            margin: 0 auto 4px;
+            position: relative;
+            transition: all 0.2s ease;
+        }
+        
+        .hour-dot.success { background: #10B981; box-shadow: 0 0 0 2px rgba(16, 185, 129, 0.2); }
+        .hour-dot.failure { background: #EF4444; box-shadow: 0 0 0 2px rgba(239, 68, 68, 0.2); }
+        .hour-dot.mixed { 
+            background: linear-gradient(45deg, #10B981 50%, #EF4444 50%); 
+            box-shadow: 0 0 0 2px rgba(251, 191, 36, 0.2); 
+        }
+        .hour-dot.running { background: #3B82F6; box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2); }
+        .hour-dot.inactive { background: #E5E7EB; }
+        
+        .hour-dot.active {
+            transform: scale(1.3);
+            box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.3);
+        }
+        
+        .hour-label {
+            font-size: 0.7rem;
+            color: #6B7280;
+            font-weight: 500;
+        }
+        
+        .hour-block:hover .hour-dot {
+            transform: scale(1.2);
+        }
+        
+        .hour-tooltip {
+            position: absolute;
+            bottom: 100%;
+            left: 50%;
+            transform: translateX(-50%);
+            background: #1F2937;
+            color: white;
+            padding: 8px 12px;
+            border-radius: 6px;
+            font-size: 0.75rem;
+            white-space: nowrap;
+            z-index: 1000;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.2s ease;
+            margin-bottom: 8px;
+        }
+        
+        .hour-tooltip::after {
+            content: '';
+            position: absolute;
+            top: 100%;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 0;
+            height: 0;
+            border-left: 4px solid transparent;
+            border-right: 4px solid transparent;
+            border-top: 4px solid #1F2937;
+        }
+        
+        .hour-block:hover .hour-tooltip {
+            opacity: 1;
+        }
+        
+        .timeline-legend {
+            display: flex;
+            justify-content: center;
+            gap: 24px;
+            flex-wrap: wrap;
+            margin-top: 16px;
+        }
+        
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 0.875rem;
+            color: #374151;
+        }
+        
+        .legend-dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+        }
+        
+        .legend-dot.success { background: #10B981; }
+        .legend-dot.failure { background: #EF4444; }
+        .legend-dot.mixed { background: linear-gradient(45deg, #10B981 50%, #EF4444 50%); }
+        .legend-dot.running { background: #3B82F6; }
+        .legend-dot.inactive { background: #E5E7EB; }
+        
+        .timeline-stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+            gap: 12px;
+            margin-top: 16px;
+            padding-top: 16px;
+            border-top: 1px solid #E5E7EB;
+        }
+        
+        .timeline-stat {
+            text-align: center;
+        }
+        
+        .timeline-stat-number {
+            font-size: 1.25rem;
+            font-weight: 700;
+            color: #1F2937;
+        }
+        
+        .timeline-stat-label {
+            font-size: 0.75rem;
+            color: #6B7280;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+        
         @media (max-width: 600px) {
             .metrics-grid { grid-template-columns: 1fr; }
             .header h1 { font-size: 2rem; }
             .content { padding: 24px 20px; }
             .footer-stats { flex-direction: column; gap: 8px; }
+            .timeline-grid { gap: 2px; }
+            .hour-dot { width: 16px; height: 16px; }
+            .hour-label { font-size: 0.6rem; }
+            .timeline-legend { gap: 16px; }
         }
     </style>
 </head>
@@ -511,6 +716,35 @@ class DailyReportService {
                 </div>
             </div>
 
+            <div class="section">
+                <div class="section-title">⏰ Activité par Heure</div>
+                <div class="hourly-timeline">
+                    ${this.generateHourlyTimeline(stats.hourlyActivity)}
+                </div>
+                <div class="timeline-legend">
+                    <div class="legend-item">
+                        <div class="legend-dot success"></div>
+                        <span>Succès</span>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-dot failure"></div>
+                        <span>Échec</span>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-dot mixed"></div>
+                        <span>Mixte</span>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-dot running"></div>
+                        <span>En cours</span>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-dot inactive"></div>
+                        <span>Inactif</span>
+                    </div>
+                </div>
+            </div>
+
             ${stats.recentErrors.length > 0 ? `
             <div class="section">
                 <div class="section-title">🚨 Incidents Récents</div>
@@ -546,6 +780,66 @@ class DailyReportService {
     </div>
 </body>
 </html>`;
+    }
+
+    // Générer le timeline horaire
+    generateHourlyTimeline(hourlyActivity) {
+        const currentHour = new Date().getHours();
+        let timelineHTML = '<div class="timeline-grid">';
+        
+        for (let hour = 0; hour < 24; hour++) {
+            const hourData = hourlyActivity[hour];
+            const isCurrentHour = hour === currentHour;
+            const hourDisplay = hour.toString().padStart(2, '0');
+            
+            // Créer le tooltip avec les détails
+            const tooltip = `
+                <div class="hour-tooltip">
+                    ${hourDisplay}h: ${hourData.executions} exec, 
+                    ${hourData.successes} ✓, ${hourData.failures} ✗
+                    ${hourData.postsProcessed > 0 ? `<br>${hourData.postsProcessed} posts traités` : ''}
+                </div>
+            `;
+            
+            timelineHTML += `
+                <div class="hour-block">
+                    <div class="hour-dot ${hourData.status} ${isCurrentHour ? 'active' : ''}"></div>
+                    <div class="hour-label">${hourDisplay}</div>
+                    ${tooltip}
+                </div>
+            `;
+        }
+        
+        timelineHTML += '</div>';
+        
+        // Ajouter les statistiques du timeline
+        const totalActiveHours = Object.values(hourlyActivity).filter(h => h.status !== 'inactive').length;
+        const successHours = Object.values(hourlyActivity).filter(h => h.status === 'success').length;
+        const failureHours = Object.values(hourlyActivity).filter(h => h.status === 'failure').length;
+        const mixedHours = Object.values(hourlyActivity).filter(h => h.status === 'mixed').length;
+        
+        timelineHTML += `
+            <div class="timeline-stats">
+                <div class="timeline-stat">
+                    <div class="timeline-stat-number">${totalActiveHours}</div>
+                    <div class="timeline-stat-label">Heures actives</div>
+                </div>
+                <div class="timeline-stat">
+                    <div class="timeline-stat-number" style="color: #10B981;">${successHours}</div>
+                    <div class="timeline-stat-label">Succès</div>
+                </div>
+                <div class="timeline-stat">
+                    <div class="timeline-stat-number" style="color: #EF4444;">${failureHours}</div>
+                    <div class="timeline-stat-label">Échecs</div>
+                </div>
+                <div class="timeline-stat">
+                    <div class="timeline-stat-number" style="color: #F59E0B;">${mixedHours}</div>
+                    <div class="timeline-stat-label">Mixtes</div>
+                </div>
+            </div>
+        `;
+        
+        return timelineHTML;
     }
 
     // Envoyer le rapport quotidien
