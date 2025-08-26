@@ -252,8 +252,63 @@ async function connectToAccount() {
           await page.waitForSelector('input[type="submit"][value="Je me connecte"]', { visible: true });
           logger.debug('Login button found');
           
+          // Vérifier l'état du formulaire avant soumission
+          const formState = await page.evaluate(() => {
+              const form = document.querySelector('form');
+              const submitButton = document.querySelector('input[type="submit"][value="Je me connecte"]');
+              const usernameField = document.querySelector('input[name="_username"]');
+              const passwordField = document.querySelector('input[name="_password"]');
+              
+              return {
+                  formExists: !!form,
+                  formAction: form ? form.action : null,
+                  formMethod: form ? form.method : null,
+                  submitButtonExists: !!submitButton,
+                  submitButtonDisabled: submitButton ? submitButton.disabled : null,
+                  usernameValue: usernameField ? usernameField.value.length : 0,
+                  passwordValue: passwordField ? passwordField.value.length : 0
+              };
+          });
+          
+          logger.debug('Form state before submission', formState);
+          
+          // Essayer d'abord un clic normal
           await page.click('input[type="submit"][value="Je me connecte"]');
           logger.debug('Login button clicked');
+          
+          // Attendre un peu pour voir si quelque chose se passe
+          await new Promise(resolve => setTimeout(resolve, 1000));
+          
+          // Vérifier si le formulaire a été soumis en regardant l'URL
+          const urlAfterClick = page.url();
+          logger.debug('URL after button click', { url: urlAfterClick });
+          
+          // Si nous sommes toujours sur la même page, essayer une soumission alternative
+          if (urlAfterClick.includes('/login')) {
+              logger.debug('Still on login page, trying alternative form submission methods');
+              
+              // Méthode alternative 1: soumettre le formulaire directement
+              await page.evaluate(() => {
+                  const form = document.querySelector('form');
+                  if (form) {
+                      form.submit();
+                  }
+              });
+              
+              logger.debug('Alternative form submission attempted');
+              
+              // Attendre un peu
+              await new Promise(resolve => setTimeout(resolve, 1000));
+              
+              // Si toujours sur login, essayer d'appuyer sur Entrée
+              if (page.url().includes('/login')) {
+                  logger.debug('Still on login, trying Enter key');
+                  await page.focus('input[name="_password"]');
+                  await page.keyboard.press('Enter');
+                  logger.debug('Enter key pressed');
+              }
+          }
+          
       } catch (submitError) {
           logger.error('connectToAccount: Failed to click login button', {
               message: submitError.message,
@@ -281,6 +336,20 @@ async function connectToAccount() {
           let currentUrl = page.url();
           logger.debug('URL after initial wait', { currentUrl });
           
+          // Vérifier s'il y a des erreurs JavaScript sur la page
+          const consoleMessages = [];
+          page.on('console', msg => {
+              if (msg.type() === 'error') {
+                  consoleMessages.push(msg.text());
+              }
+          });
+          
+          // Vérifier les erreurs de réseau
+          const networkErrors = [];
+          page.on('requestfailed', request => {
+              networkErrors.push(`${request.url()}: ${request.failure().errorText}`);
+          });
+          
           // Attendre soit une redirection, soit un changement d'URL avec timeout plus long pour Linux
           const timeoutMs = 30000; // 30 secondes pour Linux
           
@@ -305,7 +374,9 @@ async function connectToAccount() {
                   currentUrl: page.url(),
                   hasError,
                   contentLength: pageContent.length,
-                  title: await page.title().catch(() => 'unknown')
+                  title: await page.title().catch(() => 'unknown'),
+                  consoleErrors: consoleMessages,
+                  networkErrors: networkErrors
               });
           }
           
