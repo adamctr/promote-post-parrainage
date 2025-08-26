@@ -4,6 +4,29 @@ const logger = require('./logger');
 const puppeteer = require('puppeteer-extra')
 const { DEFAULT_INTERCEPT_RESOLUTION_PRIORITY } = require('puppeteer')
 const AdblockerPlugin = require('puppeteer-extra-plugin-adblocker')
+const StealthPlugin = require('puppeteer-extra-plugin-stealth')
+// Utiliser le plugin stealth avec configuration optimisée
+puppeteer.use(StealthPlugin({
+  // Configuration optimisée pour éviter les timeouts
+  enabledEvasions: new Set([
+    'chrome.app',
+    'chrome.csi', 
+    'chrome.loadTimes',
+    'chrome.runtime',
+    'defaultArgs',
+    'iframe.contentWindow',
+    'media.codecs',
+    'navigator.hardwareConcurrency',
+    'navigator.languages',
+    'navigator.permissions',
+    'navigator.plugins',
+    'navigator.webdriver',
+    'window.outerdimensions',
+    'webgl.vendor'
+    // Exclure 'sourceurl' et autres qui peuvent causer des timeouts
+  ])
+}))
+
 puppeteer.use(
   AdblockerPlugin({
     // Optionally enable Cooperative Mode for several request interceptors
