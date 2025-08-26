@@ -270,7 +270,7 @@ async function connectToAccount() {
               };
           });
           
-          logger.debug('Form state before submission', formState);
+          logger.debug(`Form state before submission: ${JSON.stringify(formState, null, 2)}`);
           
           // Essayer d'abord un clic normal
           await page.click('input[type="submit"][value="Je me connecte"]');
@@ -281,7 +281,7 @@ async function connectToAccount() {
           
           // Vérifier si le formulaire a été soumis en regardant l'URL
           const urlAfterClick = page.url();
-          logger.debug('URL after button click', { url: urlAfterClick });
+          logger.debug(`URL after button click: ${urlAfterClick}`);
           
           // Vérifier les cookies après la tentative de connexion
           const cookies = await page.cookies();
@@ -292,10 +292,9 @@ async function connectToAccount() {
               cookie.name.toLowerCase().includes('token') ||
               cookie.name.includes('PHPSESSID')
           );
-          logger.debug('Session cookies after login attempt', { 
-              totalCookies: cookies.length,
-              sessionCookies: sessionCookies.map(c => ({ name: c.name, domain: c.domain, secure: c.secure, httpOnly: c.httpOnly }))
-          });
+          logger.debug(`Session cookies after login attempt: 
+Total cookies: ${cookies.length}
+Session cookies: ${JSON.stringify(sessionCookies.map(c => ({ name: c.name, domain: c.domain, secure: c.secure, httpOnly: c.httpOnly })), null, 2)}`);
           
           // Si nous sommes toujours sur la même page, essayer une soumission alternative
           if (urlAfterClick.includes('/login')) {
@@ -348,7 +347,7 @@ async function connectToAccount() {
           await new Promise(resolve => setTimeout(resolve, 2000));
           
           let currentUrl = page.url();
-          logger.debug('URL after initial wait', { currentUrl });
+          logger.debug(`URL after initial wait: ${currentUrl}`);
           
           // Vérifier s'il y a des erreurs JavaScript sur la page
           const consoleMessages = [];
@@ -395,7 +394,7 @@ async function connectToAccount() {
           }
           
           const currentUrlAfterLogin = page.url();
-          logger.debug('Post-login URL check', { currentUrl: currentUrlAfterLogin });
+          logger.debug(`Post-login URL check: ${currentUrlAfterLogin}`);
           
           // Vérifier si nous sommes toujours sur la page de login
           if (currentUrlAfterLogin.includes('/login')) {
@@ -408,7 +407,7 @@ async function connectToAccount() {
               throw new Error(`Login failed - still on login page: ${currentUrlAfterLogin}. Page errors: ${errorMessage}`);
           }
           
-          logger.debug('Login completed successfully', { newUrl: currentUrlAfterLogin });
+          logger.debug(`Login completed successfully - New URL: ${currentUrlAfterLogin}`);
           
           // Analyser l'état de la session après connexion réussie
           const postLoginCookies = await page.cookies();
@@ -420,18 +419,17 @@ async function connectToAccount() {
               cookie.name.includes('PHPSESSID')
           );
           
-          logger.debug('Session state after successful login', {
-              url: currentUrlAfterLogin,
-              totalCookies: postLoginCookies.length,
-              sessionCookies: postLoginSessionCookies.map(c => ({ 
-                  name: c.name, 
-                  domain: c.domain, 
-                  secure: c.secure, 
-                  httpOnly: c.httpOnly,
-                  sameSite: c.sameSite,
-                  expires: c.expires 
-              }))
-          });
+          logger.debug(`Session state after successful login:
+URL: ${currentUrlAfterLogin}
+Total cookies: ${postLoginCookies.length}
+Session cookies: ${JSON.stringify(postLoginSessionCookies.map(c => ({ 
+    name: c.name, 
+    domain: c.domain, 
+    secure: c.secure, 
+    httpOnly: c.httpOnly,
+    sameSite: c.sameSite,
+    expires: c.expires 
+})), null, 2)}`);
           
       } catch (loginVerificationError) {
           logger.error('connectToAccount: Login verification failed', {
@@ -493,7 +491,7 @@ async function connectToAccount() {
         
         // Vérifier d'abord si nous sommes toujours connectés en regardant l'URL actuelle
         const initialUrl = page.url();
-        logger.debug('Current URL before navigation', { currentUrl: initialUrl });
+        logger.debug(`Current URL before navigation: ${initialUrl}`);
         
         // Attendre un peu après la connexion pour s'assurer que la session est établie
         await new Promise(resolve => setTimeout(resolve, 2000));
@@ -508,19 +506,18 @@ async function connectToAccount() {
             cookie.name.includes('PHPSESSID')
         );
         
-        logger.debug('Session state before navigation to parrainage space', {
-            currentUrl: page.url(),
-            totalCookies: preNavCookies.length,
-            sessionCookies: preNavSessionCookies.map(c => ({ 
-                name: c.name, 
-                domain: c.domain, 
-                secure: c.secure, 
-                httpOnly: c.httpOnly,
-                sameSite: c.sameSite,
-                expires: c.expires,
-                value: c.value ? c.value.substring(0, 20) + '...' : null // Afficher les premiers caractères seulement
-            }))
-        });
+        logger.debug(`Session state before navigation to parrainage space:
+Current URL: ${page.url()}
+Total cookies: ${preNavCookies.length}
+Session cookies: ${JSON.stringify(preNavSessionCookies.map(c => ({ 
+    name: c.name, 
+    domain: c.domain, 
+    secure: c.secure, 
+    httpOnly: c.httpOnly,
+    sameSite: c.sameSite,
+    expires: c.expires,
+    value: c.value ? c.value.substring(0, 20) + '...' : null
+})), null, 2)}`);
         
         // Capturer les réponses HTTP pour analyser les redirections
         const responses = [];
@@ -540,9 +537,7 @@ async function connectToAccount() {
                 waitUntil: 'networkidle0',
                 timeout: 30000
             });
-            logger.debug('Navigation completed successfully', {
-                responses: responses.map(r => ({ url: r.url, status: r.status, statusText: r.statusText }))
-            });
+            logger.debug(`Navigation completed successfully - HTTP responses: ${JSON.stringify(responses.map(r => ({ url: r.url, status: r.status, statusText: r.statusText })), null, 2)}`);
         } catch (navigationError) {
             logger.error('goToParrainagePostsSpace: Failed to navigate to URL', {
                 message: navigationError.message,
@@ -556,7 +551,7 @@ async function connectToAccount() {
         }
 
         const currentUrl = page.url();
-        logger.debug('URL after navigation attempt', { currentUrl });
+        logger.debug(`URL after navigation attempt: ${currentUrl}`);
         
         if (currentUrl && currentUrl.includes('/espace_parrain/parrainages')) {
             logger.debug({
@@ -576,7 +571,7 @@ async function connectToAccount() {
                 });
                 
                 const intermediateUrl = page.url();
-                logger.debug('Intermediate navigation result', { intermediateUrl });
+                logger.debug(`Intermediate navigation result: ${intermediateUrl}`);
                 
                 if (!intermediateUrl.includes('/login')) {
                     // Si nous sommes dans l'espace parrain, essayer de naviguer vers parrainages
@@ -588,7 +583,7 @@ async function connectToAccount() {
                     });
                     
                     const finalUrl = page.url();
-                    logger.debug('Final navigation result', { finalUrl });
+                    logger.debug(`Final navigation result: ${finalUrl}`);
                     
                     if (finalUrl.includes('/espace_parrain/parrainages')) {
                         logger.debug('Successfully navigated via alternative route');
