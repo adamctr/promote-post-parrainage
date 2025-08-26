@@ -3,6 +3,9 @@ const schedule = require('node-schedule');
 const dailyReportService = require('./dailyReportService');
 const logger = require('./logger');
 
+// Configuration du timezone Paris
+const PARIS_TIMEZONE = 'Europe/Paris';
+
 class ReportScheduler {
     constructor() {
         this.scheduledJobs = new Map();
@@ -37,22 +40,28 @@ class ReportScheduler {
             return;
         }
 
-        // Programmer l'envoi quotidien à l'heure spécifiée
+        // Programmer l'envoi quotidien à l'heure spécifiée (timezone Paris)
         const dailyJob = schedule.scheduleJob('daily-report', `${minute} ${hour} * * *`, async () => {
-            logger.info('Starting scheduled daily report generation');
+            logger.info('Starting scheduled daily report generation', { 
+                scheduledTime: reportTime, 
+                timezone: PARIS_TIMEZONE,
+                parisTime: new Date().toLocaleString('fr-FR', { timeZone: PARIS_TIMEZONE })
+            });
             try {
                 await dailyReportService.sendDailyReport();
                 logger.info('Scheduled daily report completed successfully');
             } catch (error) {
                 logger.error('Scheduled daily report failed', { error: error.message, stack: error.stack });
             }
-        });
+        }, null, true, PARIS_TIMEZONE);
 
         this.scheduledJobs.set('daily-report', dailyJob);
         
         logger.info('Daily report scheduled', { 
             time: reportTime, 
-            nextRun: dailyJob.nextInvocation()?.toISOString() 
+            timezone: PARIS_TIMEZONE,
+            nextRun: dailyJob.nextInvocation()?.toISOString(),
+            nextRunParis: dailyJob.nextInvocation()?.toLocaleString('fr-FR', { timeZone: PARIS_TIMEZONE })
         });
     }
 
@@ -71,23 +80,28 @@ class ReportScheduler {
             return;
         }
 
-        // Programmer l'envoi hebdomadaire
+        // Programmer l'envoi hebdomadaire (timezone Paris)
         const weeklyJob = schedule.scheduleJob('weekly-report', `${minute} ${hour} * * ${reportDay}`, async () => {
-            logger.info('Starting scheduled weekly report generation');
+            logger.info('Starting scheduled weekly report generation', {
+                timezone: PARIS_TIMEZONE,
+                parisTime: new Date().toLocaleString('fr-FR', { timeZone: PARIS_TIMEZONE })
+            });
             try {
                 await this.generateWeeklyReport();
                 logger.info('Scheduled weekly report completed successfully');
             } catch (error) {
                 logger.error('Scheduled weekly report failed', { error: error.message, stack: error.stack });
             }
-        });
+        }, null, true, PARIS_TIMEZONE);
 
         this.scheduledJobs.set('weekly-report', weeklyJob);
         
         logger.info('Weekly report scheduled', { 
             time: reportTime, 
             day: reportDay,
-            nextRun: weeklyJob.nextInvocation()?.toISOString() 
+            timezone: PARIS_TIMEZONE,
+            nextRun: weeklyJob.nextInvocation()?.toISOString(),
+            nextRunParis: weeklyJob.nextInvocation()?.toLocaleString('fr-FR', { timeZone: PARIS_TIMEZONE })
         });
     }
 

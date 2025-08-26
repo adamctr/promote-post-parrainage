@@ -85,10 +85,16 @@ async function testDailyReport() {
     
     // Vérifier les prochaines programmations
     const nextSchedules = reportScheduler.getNextSchedules();
-    console.log('⏰ Prochaines exécutions programmées:');
+    console.log('⏰ Prochaines exécutions programmées (heure de Paris):');
     Object.entries(nextSchedules).forEach(([name, date]) => {
-        console.log(`   • ${name}: ${date ? new Date(date).toLocaleString('fr-FR') : 'Non programmé'}`);
+        if (date) {
+            const parisTime = new Date(date).toLocaleString('fr-FR', { timeZone: 'Europe/Paris' });
+            console.log(`   • ${name}: ${parisTime} (Paris)`);
+        } else {
+            console.log(`   • ${name}: Non programmé`);
+        }
     });
+    console.log(`   • Heure actuelle à Paris: ${new Date().toLocaleString('fr-FR', { timeZone: 'Europe/Paris' })}`);
     console.log('');
     
     // Tenter d'envoyer le rapport
