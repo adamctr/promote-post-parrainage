@@ -182,20 +182,18 @@ async function connectToAccount() {
   }
   
 
-async function goToParrainagePostsSpace(page) {
+  async function goToParrainagePostsSpace(page) {
     try {
         await page.goto('https://www.1parrainage.com/espace_parrain/parrainages/');
- 
+
         if (page.url() && page.url().includes('/espace_parrain/parrainages')) {
             logger.debug({
                 status:'success',
                 message: 'Navigated to user post page',
-              })
+            });
         } else {
-            logger.error({
-                status:'error',
-                message: 'Failed to navigate to the user post page',
-              })
+            // Lève une erreur pour que le catch la capture
+            throw new Error('Failed to navigate to the user post page');
         }
     } catch (error) {
         logger.error({
@@ -203,7 +201,7 @@ async function goToParrainagePostsSpace(page) {
             reason: 'Error in goToParrainagePostsSpace',
             error: error.message,
             message: error.message,
-          })
+        });
     }
 }
 
