@@ -283,6 +283,20 @@ async function connectToAccount() {
           const urlAfterClick = page.url();
           logger.debug('URL after button click', { url: urlAfterClick });
           
+          // Vérifier les cookies après la tentative de connexion
+          const cookies = await page.cookies();
+          const sessionCookies = cookies.filter(cookie => 
+              cookie.name.toLowerCase().includes('session') || 
+              cookie.name.toLowerCase().includes('auth') ||
+              cookie.name.toLowerCase().includes('login') ||
+              cookie.name.toLowerCase().includes('token') ||
+              cookie.name.includes('PHPSESSID')
+          );
+          logger.debug('Session cookies after login attempt', { 
+              totalCookies: cookies.length,
+              sessionCookies: sessionCookies.map(c => ({ name: c.name, domain: c.domain, secure: c.secure, httpOnly: c.httpOnly }))
+          });
+          
           // Si nous sommes toujours sur la même page, essayer une soumission alternative
           if (urlAfterClick.includes('/login')) {
               logger.debug('Still on login page, trying alternative form submission methods');
@@ -396,6 +410,29 @@ async function connectToAccount() {
           
           logger.debug('Login completed successfully', { newUrl: currentUrlAfterLogin });
           
+          // Analyser l'état de la session après connexion réussie
+          const postLoginCookies = await page.cookies();
+          const postLoginSessionCookies = postLoginCookies.filter(cookie => 
+              cookie.name.toLowerCase().includes('session') || 
+              cookie.name.toLowerCase().includes('auth') ||
+              cookie.name.toLowerCase().includes('login') ||
+              cookie.name.toLowerCase().includes('token') ||
+              cookie.name.includes('PHPSESSID')
+          );
+          
+          logger.debug('Session state after successful login', {
+              url: currentUrlAfterLogin,
+              totalCookies: postLoginCookies.length,
+              sessionCookies: postLoginSessionCookies.map(c => ({ 
+                  name: c.name, 
+                  domain: c.domain, 
+                  secure: c.secure, 
+                  httpOnly: c.httpOnly,
+                  sameSite: c.sameSite,
+                  expires: c.expires 
+              }))
+          });
+          
       } catch (loginVerificationError) {
           logger.error('connectToAccount: Login verification failed', {
               message: loginVerificationError.message,
@@ -461,12 +498,51 @@ async function connectToAccount() {
         // Attendre un peu après la connexion pour s'assurer que la session est établie
         await new Promise(resolve => setTimeout(resolve, 2000));
         
+        // Analyser l'état des cookies avant la navigation
+        const preNavCookies = await page.cookies();
+        const preNavSessionCookies = preNavCookies.filter(cookie => 
+            cookie.name.toLowerCase().includes('session') || 
+            cookie.name.toLowerCase().includes('auth') ||
+            cookie.name.toLowerCase().includes('login') ||
+            cookie.name.toLowerCase().includes('token') ||
+            cookie.name.includes('PHPSESSID')
+        );
+        
+        logger.debug('Session state before navigation to parrainage space', {
+            currentUrl: page.url(),
+            totalCookies: preNavCookies.length,
+            sessionCookies: preNavSessionCookies.map(c => ({ 
+                name: c.name, 
+                domain: c.domain, 
+                secure: c.secure, 
+                httpOnly: c.httpOnly,
+                sameSite: c.sameSite,
+                expires: c.expires,
+                value: c.value ? c.value.substring(0, 20) + '...' : null // Afficher les premiers caractères seulement
+            }))
+        });
+        
+        // Capturer les réponses HTTP pour analyser les redirections
+        const responses = [];
+        page.on('response', response => {
+            if (response.url().includes('1parrainage.com')) {
+                responses.push({
+                    url: response.url(),
+                    status: response.status(),
+                    statusText: response.statusText(),
+                    headers: response.headers()
+                });
+            }
+        });
+        
         try {
             await page.goto('https://www.1parrainage.com/espace_parrain/parrainages/', { 
                 waitUntil: 'networkidle0',
                 timeout: 30000
             });
-            logger.debug('Navigation completed successfully');
+            logger.debug('Navigation completed successfully', {
+                responses: responses.map(r => ({ url: r.url, status: r.status, statusText: r.statusText }))
+            });
         } catch (navigationError) {
             logger.error('goToParrainagePostsSpace: Failed to navigate to URL', {
                 message: navigationError.message,
