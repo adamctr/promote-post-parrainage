@@ -4,10 +4,13 @@ const fs = require('fs');
 const path = require('path');
 const logger = require('./logger');
 
+// Configuration du timezone Paris
+const PARIS_TIMEZONE = 'Europe/Paris';
+
 class DailyReportService {
     constructor() {
         this.stats = {
-            date: new Date().toISOString().split('T')[0],
+            date: this.getParisDate(),
             scriptExecutions: 0,
             successfulExecutions: 0,
             failedExecutions: 0,
@@ -36,6 +39,25 @@ class DailyReportService {
         };
         
         this.setupTransporter();
+    }
+
+    // Obtenir la date actuelle au format Paris
+    getParisDate() {
+        return new Date().toLocaleDateString('en-CA', { timeZone: PARIS_TIMEZONE });
+    }
+
+    // Obtenir l'heure actuelle à Paris
+    getParisHour() {
+        return new Date().toLocaleString('fr-FR', { 
+            timeZone: PARIS_TIMEZONE, 
+            hour: 'numeric', 
+            hour12: false 
+        });
+    }
+
+    // Obtenir un timestamp Paris
+    getParisTime() {
+        return new Date().toLocaleString('fr-FR', { timeZone: PARIS_TIMEZONE });
     }
 
     // Initialiser l'activité horaire (24 heures)
@@ -79,8 +101,8 @@ class DailyReportService {
         this.stats.scriptExecutions++;
         this.stats.lastExecutionTime = new Date();
         
-        // Tracking horaire
-        const currentHour = new Date().getHours();
+        // Tracking horaire (timezone Paris)
+        const currentHour = parseInt(this.getParisHour());
         this.stats.hourlyActivity[currentHour].executions++;
         this.stats.hourlyActivity[currentHour].lastActivity = new Date();
         
@@ -115,8 +137,8 @@ class DailyReportService {
         this.stats.postsPromoted += postsPromoted;
         this.stats.executionTimes.push(duration);
         
-        // Tracking horaire
-        const currentHour = new Date().getHours();
+        // Tracking horaire (timezone Paris)
+        const currentHour = parseInt(this.getParisHour());
         this.stats.hourlyActivity[currentHour].successes++;
         this.stats.hourlyActivity[currentHour].postsProcessed += postsProcessed;
         this.stats.hourlyActivity[currentHour].postsPromoted += postsPromoted;
@@ -143,8 +165,8 @@ class DailyReportService {
             stack: error.stack || null
         });
         
-        // Tracking horaire
-        const currentHour = new Date().getHours();
+        // Tracking horaire (timezone Paris)
+        const currentHour = parseInt(this.getParisHour());
         this.stats.hourlyActivity[currentHour].failures++;
         this.stats.hourlyActivity[currentHour].lastActivity = new Date();
         this.updateHourlyStatus(currentHour);
@@ -773,8 +795,9 @@ class DailyReportService {
                 <div class="footer-stat">Connection Errors: ${stats.connectionErrors}</div>
             </div>
             <div>
-                Dernière exécution: ${stats.lastExecutionTime ? new Date(stats.lastExecutionTime).toLocaleString('fr-FR') : 'Aucune'}<br>
-                Rapport généré automatiquement • Promote Post Parrainage v2.0
+                Dernière exécution: ${stats.lastExecutionTime ? new Date(stats.lastExecutionTime).toLocaleString('fr-FR', { timeZone: PARIS_TIMEZONE }) : 'Aucune'}<br>
+                Rapport généré le ${this.getParisTime()} (heure de Paris)<br>
+                Promote Post Parrainage v2.0
             </div>
         </div>
     </div>
@@ -782,9 +805,9 @@ class DailyReportService {
 </html>`;
     }
 
-    // Générer le timeline horaire
+    // Générer le timeline horaire (timezone Paris)
     generateHourlyTimeline(hourlyActivity) {
-        const currentHour = new Date().getHours();
+        const currentHour = parseInt(this.getParisHour());
         let timelineHTML = '<div class="timeline-grid">';
         
         for (let hour = 0; hour < 24; hour++) {
@@ -888,7 +911,7 @@ class DailyReportService {
         const previousStats = { ...this.stats };
         
         this.stats = {
-            date: new Date().toISOString().split('T')[0],
+            date: this.getParisDate(),
             scriptExecutions: 0,
             successfulExecutions: 0,
             failedExecutions: 0,

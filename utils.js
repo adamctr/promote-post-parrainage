@@ -163,20 +163,6 @@ async function connectToAccount() {
         throw pageError;
     }
   
-      // Ajouter la protection contre #google_vignette
-      try {
-          await setupGoogleVignetteRemoval(page);
-          logger.debug('Google Vignette protection setup completed');
-      } catch (vignetteError) {
-          logger.error('connectToAccount: Failed to setup Google Vignette protection', {
-              message: vignetteError.message,
-              stack: vignetteError.stack,
-              name: vignetteError.name,
-              errorObject: vignetteError
-          });
-          // Continue même si la protection anti-vignette échoue
-      }
-  
       try {
           await page.goto('https://www.1parrainage.com/login', { waitUntil: 'networkidle0' });
           logger.debug('Successfully navigated to login page', { 
