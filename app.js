@@ -67,7 +67,10 @@ const scheduleAllPromotions = async () => {
     }
   };
 
-if (process.env.ENV === 'production') {
+console.log('Process env IS_SCHEDULED:', process.env.IS_SCHEDULED);
+console.log('ENV is ', process.env.ENV)
+
+if (process.env.IS_SCHEDULED === 'true') {
     scheduleAllPromotions();
 } else {
     instantPromote();
