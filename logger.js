@@ -69,6 +69,15 @@ const logger = createLogger({
                 json()
             )
         }),
+        // File transport for daily statistics
+        new transports.File({
+            filename: 'logs/daily-stats.log',
+            level: 'info',
+            format: combine(
+                customTimestamp,
+                json()
+            )
+        }),
     ]
 });
 

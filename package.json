@@ -4,7 +4,9 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "test-report": "node testDailyReportSend.js",
+    "send-report": "node -e \"require('./reportScheduler').sendImmediateReport()\""
   },
   "keywords": [],
   "author": "",
@@ -13,6 +15,7 @@
     "dotenv": "^16.6.1",
     "fs": "^0.0.1-security",
     "node-schedule": "^2.1.1",
+    "nodemailer": "^7.0.5",
     "pm2": "^5.4.2",
     "puppeteer": "^22.15.0",
     "puppeteer-extra": "^3.3.6",
