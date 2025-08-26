@@ -252,17 +252,24 @@ async function connectToAccount() {
           await page.waitForSelector('input[type="submit"][value="Je me connecte"]', { visible: true });
           logger.debug('Login button found');
           
-          // Vérifier l'état du formulaire avant soumission
+          // Vérifier l'état du formulaire avant soumission - analyser TOUS les formulaires
           const formState = await page.evaluate(() => {
-              const form = document.querySelector('form');
+              const allForms = Array.from(document.querySelectorAll('form'));
               const submitButton = document.querySelector('input[type="submit"][value="Je me connecte"]');
               const usernameField = document.querySelector('input[name="_username"]');
               const passwordField = document.querySelector('input[name="_password"]');
               
+              // Trouver le formulaire qui contient les champs de connexion
+              const loginForm = allForms.find(form => 
+                  form.contains(usernameField) && form.contains(passwordField)
+              );
+              
               return {
-                  formExists: !!form,
-                  formAction: form ? form.action : null,
-                  formMethod: form ? form.method : null,
+                  totalForms: allForms.length,
+                  allFormsActions: allForms.map(f => ({ action: f.action, method: f.method })),
+                  loginFormExists: !!loginForm,
+                  loginFormAction: loginForm ? loginForm.action : null,
+                  loginFormMethod: loginForm ? loginForm.method : null,
                   submitButtonExists: !!submitButton,
                   submitButtonDisabled: submitButton ? submitButton.disabled : null,
                   usernameValue: usernameField ? usernameField.value.length : 0,
@@ -272,9 +279,28 @@ async function connectToAccount() {
           
           logger.debug(`Form state before submission: ${JSON.stringify(formState, null, 2)}`);
           
-          // Essayer d'abord un clic normal
-          await page.click('input[type="submit"][value="Je me connecte"]');
-          logger.debug('Login button clicked');
+          // Vérifier que nous allons soumettre le bon formulaire
+          if (formState.loginFormExists && formState.loginFormAction && 
+              !formState.loginFormAction.includes('texte_results.php')) {
+              // Essayer d'abord un clic normal sur le bouton
+              await page.click('input[type="submit"][value="Je me connecte"]');
+              logger.debug('Login button clicked');
+          } else {
+              // Le bouton est dans le mauvais formulaire, utiliser la méthode alternative directement
+              logger.debug('Wrong form detected, using alternative submission method');
+              await page.evaluate(() => {
+                  const usernameField = document.querySelector('input[name="_username"]');
+                  const passwordField = document.querySelector('input[name="_password"]');
+                  
+                  if (usernameField && passwordField) {
+                      const loginForm = usernameField.closest('form');
+                      if (loginForm) {
+                          console.log('Submitting correct login form:', loginForm.action);
+                          loginForm.submit();
+                      }
+                  }
+              });
+          }
           
           // Attendre un peu pour voir si quelque chose se passe
           await new Promise(resolve => setTimeout(resolve, 1000));
@@ -300,11 +326,18 @@ Session cookies: ${JSON.stringify(sessionCookies.map(c => ({ name: c.name, domai
           if (urlAfterClick.includes('/login')) {
               logger.debug('Still on login page, trying alternative form submission methods');
               
-              // Méthode alternative 1: soumettre le formulaire directement
+              // Méthode alternative 1: soumettre le BON formulaire (celui qui contient les champs de connexion)
               await page.evaluate(() => {
-                  const form = document.querySelector('form');
-                  if (form) {
-                      form.submit();
+                  const usernameField = document.querySelector('input[name="_username"]');
+                  const passwordField = document.querySelector('input[name="_password"]');
+                  
+                  if (usernameField && passwordField) {
+                      // Trouver le formulaire parent qui contient ces champs
+                      const loginForm = usernameField.closest('form');
+                      if (loginForm) {
+                          console.log('Submitting correct login form:', loginForm.action);
+                          loginForm.submit();
+                      }
                   }
               });
               
