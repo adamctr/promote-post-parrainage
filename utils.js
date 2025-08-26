@@ -179,7 +179,11 @@ async function connectToAccount() {
   
       try {
           await page.goto('https://www.1parrainage.com/login', { waitUntil: 'networkidle0' });
-          logger.debug('Successfully navigated to login page');
+          logger.debug('Successfully navigated to login page', { 
+              url: page.url(),
+              platform: process.platform,
+              env: process.env.ENV 
+          });
       } catch (navigationError) {
           logger.error('connectToAccount: Failed to navigate to login page', {
               message: navigationError.message,
@@ -260,11 +264,44 @@ async function connectToAccount() {
           });
           throw submitError;
       }
+
+      // Attendre la redirection après connexion et vérifier que nous ne sommes plus sur la page de login
+      try {
+          logger.debug('Waiting for login to complete...');
+          
+          // Attendre soit une redirection, soit un changement d'URL, soit l'apparition d'éléments de l'espace membre
+          await Promise.race([
+              // Option 1: Attendre que l'URL change (plus sur /login)
+              page.waitForFunction(() => !window.location.href.includes('/login'), { timeout: 10000 }),
+              // Option 2: Attendre la navigation
+              page.waitForNavigation({ waitUntil: 'networkidle0', timeout: 10000 }).catch(() => {})
+          ]);
+          
+          const currentUrlAfterLogin = page.url();
+          logger.debug('Post-login URL check', { currentUrl: currentUrlAfterLogin });
+          
+          // Vérifier si nous sommes toujours sur la page de login
+          if (currentUrlAfterLogin.includes('/login')) {
+              throw new Error(`Login failed - still on login page: ${currentUrlAfterLogin}`);
+          }
+          
+          logger.debug('Login completed successfully', { newUrl: currentUrlAfterLogin });
+          
+      } catch (loginVerificationError) {
+          logger.error('connectToAccount: Login verification failed', {
+              message: loginVerificationError.message,
+              stack: loginVerificationError.stack,
+              name: loginVerificationError.name,
+              currentUrl: page.url(),
+              errorObject: loginVerificationError
+          });
+          throw loginVerificationError;
+      }
   
       logger.debug({
         type: 'connection',
         status: 'success',
-        message: 'Connexion réussie'
+        message: 'Connexion réussie et vérifiée'
       });
   
       return { page, browser };
