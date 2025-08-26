@@ -1,7 +1,8 @@
 const { createLogger, format, transports } = require('winston');
 const { combine, timestamp, json, colorize, simple, printf, splat } = format;
 
-const consoleloggerLevel = process.env.WINSTON_LOGGER_LEVEL || "info";
+// Niveau de log par défaut (debug pour un maximum de détails, peut être overridé par la variable d'environnement)
+const consoleloggerLevel = process.env.WINSTON_LOGGER_LEVEL || "debug";
 
 // Custom format for console logs with colorization and pretty printing
 const consoleFormat = combine(
@@ -54,6 +55,15 @@ const logger = createLogger({
         new transports.File({
             filename: 'logs/app-info.log',
             level: 'info',
+            format: combine(
+                customTimestamp,
+                json()
+            )
+        }),
+        // File transport for logging debug level logs to a file
+        new transports.File({
+            filename: 'logs/app-debug.log',
+            level: 'debug',
             format: combine(
                 customTimestamp,
                 json()

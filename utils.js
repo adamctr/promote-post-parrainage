@@ -188,7 +188,7 @@ async function connectToAccount() {
           if (acceptButton) acceptButton.click();
         });
   
-        await page.waitForTimeout(1000); // Attendre que la modal disparaisse
+        await new Promise(resolve => setTimeout(resolve, 1000)); // Attendre que la modal disparaisse
       } catch (error) {
         logger.error('connectToAccount: Failed to handle cookies banner', {
           message: error.message,
