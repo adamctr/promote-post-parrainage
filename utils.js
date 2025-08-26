@@ -454,6 +454,13 @@ async function connectToAccount() {
 
         logger.debug('Starting navigation to parrainage posts space');
         
+        // Vérifier d'abord si nous sommes toujours connectés en regardant l'URL actuelle
+        const initialUrl = page.url();
+        logger.debug('Current URL before navigation', { currentUrl: initialUrl });
+        
+        // Attendre un peu après la connexion pour s'assurer que la session est établie
+        await new Promise(resolve => setTimeout(resolve, 2000));
+        
         try {
             await page.goto('https://www.1parrainage.com/espace_parrain/parrainages/', { 
                 waitUntil: 'networkidle0',
@@ -473,16 +480,65 @@ async function connectToAccount() {
         }
 
         const currentUrl = page.url();
+        logger.debug('URL after navigation attempt', { currentUrl });
+        
         if (currentUrl && currentUrl.includes('/espace_parrain/parrainages')) {
             logger.debug({
                 status:'success',
                 message: 'Successfully navigated to parrainage posts page',
                 currentUrl: currentUrl
             });
+        } else if (currentUrl.includes('/login')) {
+            // Si nous sommes redirigés vers login, la session a expiré
+            logger.debug('Redirected to login - session may have expired, trying alternative approach');
+            
+            // Essayer d'abord de naviguer vers l'espace parrain général
+            try {
+                await page.goto('https://www.1parrainage.com/espace_parrain/', { 
+                    waitUntil: 'networkidle0',
+                    timeout: 15000
+                });
+                
+                const intermediateUrl = page.url();
+                logger.debug('Intermediate navigation result', { intermediateUrl });
+                
+                if (!intermediateUrl.includes('/login')) {
+                    // Si nous sommes dans l'espace parrain, essayer de naviguer vers parrainages
+                    await new Promise(resolve => setTimeout(resolve, 1000));
+                    
+                    await page.goto('https://www.1parrainage.com/espace_parrain/parrainages/', { 
+                        waitUntil: 'networkidle0',
+                        timeout: 15000
+                    });
+                    
+                    const finalUrl = page.url();
+                    logger.debug('Final navigation result', { finalUrl });
+                    
+                    if (finalUrl.includes('/espace_parrain/parrainages')) {
+                        logger.debug('Successfully navigated via alternative route');
+                        return; // Succès via route alternative
+                    }
+                }
+            } catch (alternativeError) {
+                logger.debug('Alternative navigation failed', { 
+                    error: alternativeError.message 
+                });
+            }
+            
+            // Si tout échoue, lever l'erreur
+            const urlError = new Error(`Failed to navigate to the user post page. Redirected to login page: ${currentUrl}`);
+            logger.error('goToParrainagePostsSpace: Session expired or login required', {
+                message: urlError.message,
+                expectedPattern: '/espace_parrain/parrainages',
+                actualUrl: currentUrl,
+                targetUrl: 'https://www.1parrainage.com/espace_parrain/parrainages/',
+                errorObject: urlError
+            });
+            throw urlError;
         } else {
-            // Lève une erreur pour que le catch la capture
-            const urlError = new Error(`Failed to navigate to the user post page. Expected URL pattern '/espace_parrain/parrainages' but got '${currentUrl}'`);
-            logger.error('goToParrainagePostsSpace: URL validation failed', {
+            // Autre erreur inattendue
+            const urlError = new Error(`Failed to navigate to the user post page. Unexpected URL: ${currentUrl}`);
+            logger.error('goToParrainagePostsSpace: Unexpected navigation result', {
                 message: urlError.message,
                 expectedPattern: '/espace_parrain/parrainages',
                 actualUrl: currentUrl,
