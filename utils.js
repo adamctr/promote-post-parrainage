@@ -108,6 +108,7 @@ async function connectToAccount() {
         
     // Ajouter executablePath uniquement en production
     if (process.env.ENV === 'production') {
+        console.log('production mode, setting executablePath to /snap/bin/chromium');
     launchOptions.executablePath = '/snap/bin/chromium';
     }
         
