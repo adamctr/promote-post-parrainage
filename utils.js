@@ -266,23 +266,61 @@ async function connectToAccount() {
       }
 
       // Attendre la redirection après connexion et vérifier que nous ne sommes plus sur la page de login
-      try {
-          logger.debug('Waiting for login to complete...');
+      // Possibilité de désactiver la vérification avec SKIP_LOGIN_VERIFICATION=true
+      const skipVerification = process.env.SKIP_LOGIN_VERIFICATION === 'true';
+      
+      if (skipVerification) {
+          logger.debug('Skipping login verification (SKIP_LOGIN_VERIFICATION=true)');
+      } else {
+          try {
+              logger.debug('Waiting for login to complete...');
           
-          // Attendre soit une redirection, soit un changement d'URL, soit l'apparition d'éléments de l'espace membre
-          await Promise.race([
-              // Option 1: Attendre que l'URL change (plus sur /login)
-              page.waitForFunction(() => !window.location.href.includes('/login'), { timeout: 10000 }),
-              // Option 2: Attendre la navigation
-              page.waitForNavigation({ waitUntil: 'networkidle0', timeout: 10000 }).catch(() => {})
-          ]);
+          // Attendre un peu pour que la soumission du formulaire se lance
+          await new Promise(resolve => setTimeout(resolve, 2000));
+          
+          let currentUrl = page.url();
+          logger.debug('URL after initial wait', { currentUrl });
+          
+          // Attendre soit une redirection, soit un changement d'URL avec timeout plus long pour Linux
+          const timeoutMs = 30000; // 30 secondes pour Linux
+          
+          try {
+              await Promise.race([
+                  // Option 1: Attendre que l'URL change (plus sur /login)
+                  page.waitForFunction(() => !window.location.href.includes('/login'), { timeout: timeoutMs }),
+                  // Option 2: Attendre la navigation
+                  page.waitForNavigation({ waitUntil: 'networkidle0', timeout: timeoutMs })
+              ]);
+          } catch (waitError) {
+              logger.debug('Wait timeout reached, checking current state', {
+                  currentUrl: page.url(),
+                  waitError: waitError.message
+              });
+              
+              // Vérifier s'il y a des erreurs sur la page
+              const pageContent = await page.content();
+              const hasError = pageContent.includes('error') || pageContent.includes('erreur') || pageContent.includes('invalid');
+              
+              logger.debug('Page analysis after timeout', {
+                  currentUrl: page.url(),
+                  hasError,
+                  contentLength: pageContent.length,
+                  title: await page.title().catch(() => 'unknown')
+              });
+          }
           
           const currentUrlAfterLogin = page.url();
           logger.debug('Post-login URL check', { currentUrl: currentUrlAfterLogin });
           
           // Vérifier si nous sommes toujours sur la page de login
           if (currentUrlAfterLogin.includes('/login')) {
-              throw new Error(`Login failed - still on login page: ${currentUrlAfterLogin}`);
+              // Essayer de voir s'il y a un message d'erreur sur la page
+              const errorMessage = await page.evaluate(() => {
+                  const errorElements = document.querySelectorAll('.error, .alert, .message, [class*="error"], [class*="alert"]');
+                  return Array.from(errorElements).map(el => el.textContent).join(' | ');
+              }).catch(() => 'Unable to check for error messages');
+              
+              throw new Error(`Login failed - still on login page: ${currentUrlAfterLogin}. Page errors: ${errorMessage}`);
           }
           
           logger.debug('Login completed successfully', { newUrl: currentUrlAfterLogin });
@@ -293,9 +331,12 @@ async function connectToAccount() {
               stack: loginVerificationError.stack,
               name: loginVerificationError.name,
               currentUrl: page.url(),
+              platform: process.platform,
+              env: process.env.ENV,
               errorObject: loginVerificationError
           });
           throw loginVerificationError;
+      }
       }
   
       logger.debug({
