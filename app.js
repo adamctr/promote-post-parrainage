@@ -53,8 +53,8 @@ const instantPromote = async () => {
             let postsPromoted = 0;
             
             // Exécuter les promotions et compter les résultats
-            const editingResult = await promoteAdByEditing(page);
-            const subscriptionResult = await promoteAdBySubscription(page);
+            const editingResult = await promoteAdByEditing(page, browser);
+            const subscriptionResult = await promoteAdBySubscription(page, browser);
             
             // Calculer les totaux (à adapter selon la structure de retour de vos fonctions)
             postsProcessed = (editingResult?.processed || 0) + (subscriptionResult?.processed || 0);

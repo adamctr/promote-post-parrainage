@@ -2,7 +2,7 @@ require('dotenv').config();
 const puppeteer = require('puppeteer');
 const schedule = require('node-schedule');
 const logger = require('./logger.js');
-const { connectToAccount, goToParrainagePostsSpace, setupGoogleVignetteRemoval } = require('./utils.js');
+const { connectToAccount, goToParrainagePostsSpace, setupGoogleVignetteRemoval, ensureValidSession } = require('./utils.js');
 
 // Function to obtain the number of posts
 async function getNumberOfPosts(page) {
@@ -229,19 +229,71 @@ async function editPost(page, postIndex) {
 }
 
 // Main function to promote advertisements by edition
-async function promoteAdByEditing(page) {
+async function promoteAdByEditing(page, browser = null) {
     if (page) {
         try {
+            // Validate session and reconnect if needed
+            let validSession;
+            try {
+                validSession = await ensureValidSession(page, browser);
+                page = validSession.page;
+                browser = validSession.browser;
+            } catch (sessionError) {
+                logger.error({
+                    type: 'promoteByEditing',
+                    status: 'session_failed',
+                    message: `Failed to ensure valid session: ${sessionError.message}`
+                });
+                throw sessionError;
+            }
+
             await goToParrainagePostsSpace(page);
 
             const numberOfPosts = await getNumberOfPosts(page);
             let editPostError = 0;
             for (let i = 0; i < numberOfPosts; i++) {
-                try {
-                    await editPost(page, i);
-                } catch(err) {
-                    editPostError++;
-                    await goToParrainagePostsSpace(page);
+                let retryCount = 0;
+                const maxRetries = 2;
+                
+                while (retryCount <= maxRetries) {
+                    try {
+                        await editPost(page, i);
+                        break; // Success, exit retry loop
+                    } catch(err) {
+                        retryCount++;
+                        
+                        if (retryCount <= maxRetries) {
+                            logger.warn({
+                                type: 'promoteByEditing',
+                                status: 'retry',
+                                message: `Error editing post ${i}, attempt ${retryCount}/${maxRetries + 1}: ${err.message}`
+                            });
+                            
+                            // Check if session expired and reconnect if needed
+                            try {
+                                const validSession = await ensureValidSession(page, browser);
+                                page = validSession.page;
+                                browser = validSession.browser;
+                                await goToParrainagePostsSpace(page);
+                            } catch (sessionError) {
+                                logger.error({
+                                    type: 'promoteByEditing',
+                                    status: 'session_retry_failed',
+                                    message: `Failed to restore session during retry: ${sessionError.message}`
+                                });
+                                editPostError++;
+                                break; // Exit retry loop if session can't be restored
+                            }
+                        } else {
+                            // Max retries exceeded
+                            logger.error({
+                                type: 'promoteByEditing',
+                                status: 'max_retries_exceeded',
+                                message: `Failed to edit post ${i} after ${maxRetries + 1} attempts: ${err.message}`
+                            });
+                            editPostError++;
+                        }
+                    }
                 }
             }
 
@@ -285,10 +337,10 @@ async function promoteAdByEditing(page) {
 const schedulePromotion = (page, browser) => {
     // Schedule at 2 PM and 4 PM every day
     const job1 = schedule.scheduleJob('5 22 * * *', async () => {
-        await promoteAdByEditing(page);
+        await promoteAdByEditing(page, browser);
     });
     const job2 = schedule.scheduleJob('5 16 * * *', async () => {
-        await promoteAdByEditing(page);
+        await promoteAdByEditing(page, browser);
     });
 };
 

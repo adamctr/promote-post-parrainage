@@ -614,6 +614,99 @@ Session cookies: ${JSON.stringify(postLoginSessionCookies.map(c => ({
   }
   
 
+  // Function to validate if the user is still logged in
+  async function isSessionValid(page) {
+    try {
+        if (!page) {
+            return false;
+        }
+        
+        const currentUrl = page.url();
+        
+        // If we're on the login page, session has expired
+        if (currentUrl.includes('/login')) {
+            logger.debug('Session validation: Currently on login page - session expired');
+            return false;
+        }
+        
+        // If we're on the user space page, session is likely valid
+        if (currentUrl.includes('/espace_parrain')) {
+            logger.debug('Session validation: Currently on user space - session appears valid');
+            return true;
+        }
+        
+        // Try to navigate to the user space to test session validity
+        logger.debug('Session validation: Testing session by navigating to user space');
+        
+        try {
+            await page.goto('https://www.1parrainage.com/espace_parrain/', { 
+                waitUntil: 'networkidle0',
+                timeout: 10000
+            });
+            
+            const testUrl = page.url();
+            const isValid = !testUrl.includes('/login');
+            
+            logger.debug(`Session validation result: ${isValid ? 'VALID' : 'EXPIRED'}`, {
+                testUrl,
+                redirectedToLogin: testUrl.includes('/login')
+            });
+            
+            return isValid;
+        } catch (error) {
+            logger.debug('Session validation: Navigation test failed', { error: error.message });
+            return false;
+        }
+    } catch (error) {
+        logger.error('Session validation: Error during validation', { 
+            error: error.message,
+            stack: error.stack 
+        });
+        return false;
+    }
+}
+
+// Function to ensure session is valid, reconnect if needed
+async function ensureValidSession(page, browser) {
+    try {
+        const isValid = await isSessionValid(page);
+        
+        if (isValid) {
+            logger.debug('Session is valid, continuing with current session');
+            return { page, browser };
+        }
+        
+        logger.info('Session expired, attempting to reconnect...');
+        
+        // Close current browser if it exists
+        if (browser) {
+            try {
+                await browser.close();
+                logger.debug('Closed expired browser session');
+            } catch (closeError) {
+                logger.debug('Error closing expired browser', { error: closeError.message });
+            }
+        }
+        
+        // Reconnect to account
+        const { page: newPage, browser: newBrowser } = await connectToAccount();
+        
+        if (newPage && newBrowser) {
+            logger.info('Successfully reconnected to account with new session');
+            return { page: newPage, browser: newBrowser };
+        } else {
+            throw new Error('Failed to establish new session');
+        }
+        
+    } catch (error) {
+        logger.error('Failed to ensure valid session', {
+            error: error.message,
+            stack: error.stack
+        });
+        throw error;
+    }
+}
+
   async function goToParrainagePostsSpace(page) {
     try {
         if (!page) {
@@ -652,18 +745,43 @@ Session cookies: ${JSON.stringify(preNavSessionCookies.map(c => ({
     value: c.value ? c.value.substring(0, 20) + '...' : null
 })), null, 2)}`);
         
-        // Capturer les réponses HTTP pour analyser les redirections
+        // Enhanced HTTP response monitoring for session expiration detection
         const responses = [];
-        page.on('response', response => {
+        const sessionExpiredHandler = (response) => {
             if (response.url().includes('1parrainage.com')) {
-                responses.push({
+                const responseData = {
                     url: response.url(),
                     status: response.status(),
                     statusText: response.statusText(),
                     headers: response.headers()
-                });
+                };
+                responses.push(responseData);
+                
+                // Detect 302 redirects to login page (session expiration indicator)
+                if (response.status() === 302) {
+                    const location = response.headers()['location'];
+                    if (location && location.includes('/login')) {
+                        logger.warn('Session expiration detected: 302 redirect to login page', {
+                            originalUrl: response.url(),
+                            redirectLocation: location,
+                            status: response.status()
+                        });
+                    }
+                }
+                
+                // Detect when we land on login page unexpectedly
+                if (response.url().includes('/login') && response.status() === 200) {
+                    logger.warn('Unexpected navigation to login page detected', {
+                        url: response.url(),
+                        status: response.status(),
+                        previousUrl: page.url()
+                    });
+                }
             }
-        });
+        };
+        
+        // Add the session monitoring handler
+        page.on('response', sessionExpiredHandler);
         
         try {
             await page.goto('https://www.1parrainage.com/espace_parrain/parrainages/', { 
@@ -764,4 +882,4 @@ Session cookies: ${JSON.stringify(preNavSessionCookies.map(c => ({
     }
 }
 
-module.exports = { goToParrainagePostsSpace, connectToAccount, setupGoogleVignetteRemoval };
+module.exports = { goToParrainagePostsSpace, connectToAccount, setupGoogleVignetteRemoval, isSessionValid, ensureValidSession };
