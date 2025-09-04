@@ -152,6 +152,11 @@ async function connectToAccount() {
 
     try {
         page = await browser.newPage();
+        await page.setViewport({ width: 1280, height: 800 });
+        await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36');
+        await page.setJavaScriptEnabled(true);
+        await page.setRequestInterception(true);
+
         logger.debug('New page created successfully');
     } catch (pageError) {
         logger.error('connectToAccount: Failed to create new page', {
