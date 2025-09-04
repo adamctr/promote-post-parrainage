@@ -66,12 +66,64 @@ async function editPost(page, postIndex) {
                 status: 'info',
                 message: `URL d'édition: ${editUrl}`
             });
+
+                // DEBUG avant clic
+            logger.debug({
+                type: 'edit',
+                status: 'info',
+                message: `Tentative de clic sur bouton index=${postIndex}`
+            });
             
-            // Cliquer sur le bouton d'édition
+            // Vérifier si le bouton est visible et cliquable
+            const box = await editButtons[postIndex].boundingBox();
+            if (!box) {
+                logger.error({
+                type: 'edit',
+                status: 'error',
+                message: `Le bouton index=${postIndex} est invisible ou hors viewport`
+                });
+            } else {
+                logger.debug({
+                type: 'edit',
+                status: 'info',
+                message: `BoundingBox bouton index=${postIndex}:`,
+                box
+                });
+            }
+            
+            // Lancer le clic + navigation en parallèle
+            const oldUrl = page.url();
+            try {
             await Promise.all([
                 page.waitForNavigation({ waitUntil: 'networkidle0', timeout: 60000 }),
-                editButtons[postIndex].click()
+                (async () => {
+                // Scroll vers le bouton et tenter clic
+                await editButtons[postIndex].scrollIntoViewIfNeeded();
+                await editButtons[postIndex].click({ delay: 50 });
+                logger.debug({
+                    type: 'edit',
+                    status: 'info',
+                    message: `Clic exécuté sur bouton index=${postIndex}`
+                });
+                })()
             ]);
+
+            const newUrl = page.url();
+            logger.debug({
+                type: 'edit',
+                status: 'success',
+                message: `Navigation détectée (oldUrl=${oldUrl}, newUrl=${newUrl})`
+            });
+            } catch (err) {
+            const newUrl = page.url();
+            logger.error({
+                type: 'edit',
+                status: 'error',
+                message: `Pas de navigation après clic (oldUrl=${oldUrl}, newUrl=${newUrl})`,
+                error: err.message
+            });
+            
+            }
             logger.debug({
                 type: 'edit',
                 status: 'success',
