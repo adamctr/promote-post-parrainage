@@ -20,7 +20,7 @@ async function healthCheck() {
         console.log('\n📦 Testing basic browser launch...');
         
         const launchOptions = {
-            headless: process.env.ENV === 'production' ? 'new' : false,
+            headless: 'new', // process.env.ENV === 'production' ? 'new' : false
             timeout: 60000,
             protocolTimeout: 180000, // 3 minutes for protocol operations
             args: [
