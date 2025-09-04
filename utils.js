@@ -162,6 +162,18 @@ async function connectToAccount() {
         });
         throw pageError;
     }
+
+    // Intercept Console Logs
+
+    page.on('console', async (msg) => {
+        try {
+          const args = await Promise.all(msg.args().map(arg => arg.jsonValue()));
+          logger.debug({ type: 'console', level: msg.type(), args });
+        } catch (err) {
+          logger.error({ type: 'console', message: 'Error parsing console log', error: err });
+        }
+      });
+      
   
       try {
           await page.goto('https://www.1parrainage.com/login', { waitUntil: 'networkidle0' });
