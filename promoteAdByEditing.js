@@ -45,38 +45,90 @@ async function editTextInTextarea(page) {
             return false;
         }
 
-        // Obtenir le texte actuel du textarea
+        // Obtenir le texte actuel du textarea (peut être du HTML encodé)
         const currentText = await page.$eval('textarea#edit_parrainage_presentation', el => el.value);
         logger.debug({
             type: 'edit_textarea',
             status: 'info',
-            message: `Texte actuel du textarea: ${currentText.substring(0, 50)}...`
+            message: `Texte actuel du textarea: ${currentText.substring(0, 100)}...`
+        });
+
+        // Décoder le HTML si nécessaire (pour les entités comme &gt;, &lt;, etc.)
+        const decodedText = currentText.replace(/&lt;/g, '<')
+                                      .replace(/&gt;/g, '>')
+                                      .replace(/&amp;/g, '&')
+                                      .replace(/&quot;/g, '"')
+                                      .replace(/&#39;/g, "'");
+
+        // Vérifier si on travaille avec du HTML ou du texte brut
+        const isHtmlContent = decodedText.includes('<') && decodedText.includes('>');
+        logger.debug({
+            type: 'edit_textarea',
+            status: 'info',
+            message: `Contenu HTML détecté: ${isHtmlContent}, texte décodé: ${decodedText.substring(0, 50)}...`
         });
 
         // Déterminer la nouvelle valeur
         let newText;
-        if (currentText.endsWith('.')) {
-            newText = currentText.slice(0, -1); // Supprimer le dernier point
-            logger.debug({
-                type: 'edit_textarea',
-                status: 'info',
-                message: 'Point supprimé du textarea'
-            });
+        let newDecodedText;
+
+        if (isHtmlContent) {
+            // Pour le contenu HTML, on modifie le texte décodé
+            if (decodedText.trim().endsWith('.')) {
+                newDecodedText = decodedText.trim().slice(0, -1);
+                logger.debug({
+                    type: 'edit_textarea',
+                    status: 'info',
+                    message: 'Point supprimé du contenu HTML'
+                });
+            } else {
+                newDecodedText = decodedText.trim() + '.';
+                logger.debug({
+                    type: 'edit_textarea',
+                    status: 'info',
+                    message: 'Point ajouté au contenu HTML'
+                });
+            }
+
+            // Re-encoder en HTML pour le textarea
+            newText = newDecodedText.replace(/&/g, '&amp;')
+                                   .replace(/</g, '&lt;')
+                                   .replace(/>/g, '&gt;')
+                                   .replace(/"/g, '&quot;')
+                                   .replace(/'/g, '&#39;');
         } else {
-            newText = currentText + '.'; // Ajouter un point
-            logger.debug({
-                type: 'edit_textarea',
-                status: 'info',
-                message: 'Point ajouté au textarea'
-            });
+            // Pour le texte brut
+            if (currentText.endsWith('.')) {
+                newText = currentText.slice(0, -1);
+                logger.debug({
+                    type: 'edit_textarea',
+                    status: 'info',
+                    message: 'Point supprimé du texte brut'
+                });
+            } else {
+                newText = currentText + '.';
+                logger.debug({
+                    type: 'edit_textarea',
+                    status: 'info',
+                    message: 'Point ajouté au texte brut'
+                });
+            }
         }
 
         // Mettre à jour le textarea
         await page.$eval('textarea#edit_parrainage_presentation', (el, text) => {
             el.value = text;
+            // Déclencher plusieurs événements pour s'assurer que CKEditor détecte le changement
             el.dispatchEvent(new Event('input', { bubbles: true }));
             el.dispatchEvent(new Event('change', { bubbles: true }));
+            el.dispatchEvent(new Event('keyup', { bubbles: true }));
+            // Focus temporaire pour forcer la mise à jour
+            el.focus();
+            el.blur();
         }, newText);
+
+        // Petite pause pour laisser CKEditor traiter le changement
+        await page.evaluate(() => new Promise(resolve => setTimeout(resolve, 500)));
 
         logger.debug({
             type: 'edit_textarea',
@@ -375,14 +427,6 @@ async function editPost(page, postIndex) {
                     status: 'success',
                     message: 'Modifications sauvegardées avec succès'
                 });
-
-                // Retourner à la liste des posts parrainage pour pouvoir éditer le post suivant
-                await goToParrainagePostsSpace(page);
-                logger.debug({
-                    type: 'edit',
-                    status: 'success',
-                    message: 'Retour à la liste des posts effectué'
-                });
             } catch (error) {
                 logger.error({
                     type: 'edit',
@@ -413,6 +457,83 @@ async function editPost(page, postIndex) {
     }
 }
 
+// Function to process a single post with proper navigation
+async function processSinglePost(page, browser, postIndex, maxRetries = 2) {
+    let retryCount = 0;
+    let lastError = null;
+
+    while (retryCount <= maxRetries) {
+        try {
+            // Assurer qu'on est toujours sur la page de liste des posts
+            await goToParrainagePostsSpace(page);
+            logger.debug({
+                type: 'processSinglePost',
+                status: 'info',
+                message: `Traitement du post ${postIndex}, tentative ${retryCount + 1}/${maxRetries + 1}`
+            });
+
+            // Vérifier que les posts sont toujours disponibles
+            const currentNumberOfPosts = await getNumberOfPosts(page);
+            if (postIndex >= currentNumberOfPosts) {
+                logger.warn({
+                    type: 'processSinglePost',
+                    status: 'warn',
+                    message: `Post ${postIndex} non disponible (seulement ${currentNumberOfPosts} posts trouvés)`
+                });
+                return false;
+            }
+
+            // Traiter le post
+            const success = await editPost(page, postIndex);
+            if (success) {
+                logger.info({
+                    type: 'processSinglePost',
+                    status: 'success',
+                    message: `Post ${postIndex} traité avec succès`
+                });
+                return true;
+            } else {
+                throw new Error(`Échec du traitement du post ${postIndex}`);
+            }
+
+        } catch(err) {
+            lastError = err;
+            retryCount++;
+
+            if (retryCount <= maxRetries) {
+                logger.warn({
+                    type: 'processSinglePost',
+                    status: 'retry',
+                    message: `Erreur post ${postIndex}, tentative ${retryCount}/${maxRetries + 1}: ${err.message}`
+                });
+
+                // Vérifier et restaurer la session si nécessaire
+                try {
+                    const validSession = await ensureValidSession(page, browser);
+                    page = validSession.page;
+                    browser = validSession.browser;
+                } catch (sessionError) {
+                    logger.error({
+                        type: 'processSinglePost',
+                        status: 'session_failed',
+                        message: `Impossible de restaurer la session: ${sessionError.message}`
+                    });
+                    return false;
+                }
+            } else {
+                logger.error({
+                    type: 'processSinglePost',
+                    status: 'max_retries_exceeded',
+                    message: `Échec définitif du post ${postIndex} après ${maxRetries + 1} tentatives: ${err.message}`
+                });
+                return false;
+            }
+        }
+    }
+
+    return false;
+}
+
 // Main function to promote advertisements by edition
 async function promoteAdByEditing(page, browser = null) {
     if (page) {
@@ -432,71 +553,51 @@ async function promoteAdByEditing(page, browser = null) {
                 throw sessionError;
             }
 
+            // Aller à la page des posts
             await goToParrainagePostsSpace(page);
 
-            const numberOfPosts = await getNumberOfPosts(page);
-            let editPostError = 0;
-            for (let i = 0; i < numberOfPosts; i++) {
-                let retryCount = 0;
-                const maxRetries = 2;
-                
-                while (retryCount <= maxRetries) {
-                    try {
-                        await editPost(page, i);
-                        break; // Success, exit retry loop
-                    } catch(err) {
-                        retryCount++;
-                        
-                        if (retryCount <= maxRetries) {
-                            logger.warn({
-                                type: 'promoteByEditing',
-                                status: 'retry',
-                                message: `Error editing post ${i}, attempt ${retryCount}/${maxRetries + 1}: ${err.message}`
-                            });
-                            
-                            // Check if session expired and reconnect if needed
-                            try {
-                                const validSession = await ensureValidSession(page, browser);
-                                page = validSession.page;
-                                browser = validSession.browser;
-                                await goToParrainagePostsSpace(page);
-                            } catch (sessionError) {
-                                logger.error({
-                                    type: 'promoteByEditing',
-                                    status: 'session_retry_failed',
-                                    message: `Failed to restore session during retry: ${sessionError.message}`
-                                });
-                                editPostError++;
-                                break; // Exit retry loop if session can't be restored
-                            }
-                        } else {
-                            // Max retries exceeded
-                            logger.error({
-                                type: 'promoteByEditing',
-                                status: 'max_retries_exceeded',
-                                message: `Failed to edit post ${i} after ${maxRetries + 1} attempts: ${err.message}`
-                            });
-                            editPostError++;
-                        }
-                    }
+            // Obtenir le nombre initial de posts
+            const initialNumberOfPosts = await getNumberOfPosts(page);
+            logger.info({
+                type: 'promoteByEditing',
+                status: 'info',
+                message: `Début du traitement de ${initialNumberOfPosts} posts`
+            });
+
+            let successCount = 0;
+            let errorCount = 0;
+
+            // Traiter chaque post individuellement
+            for (let i = 0; i < initialNumberOfPosts; i++) {
+                const success = await processSinglePost(page, browser, i);
+                if (success) {
+                    successCount++;
+                } else {
+                    errorCount++;
                 }
+
+                // Petite pause entre les posts pour éviter la surcharge
+                await page.evaluate(() => new Promise(resolve => setTimeout(resolve, 1000)));
             }
 
-            if (numberOfPosts - editPostError === numberOfPosts) {
+            // Afficher le résumé final
+            if (successCount === initialNumberOfPosts) {
                 logger.info({
                     type: 'promoteByEditing',
                     status: 'success',
-                    message: `The ads (${numberOfPosts}) have been successfully up thanks to the modification !`,
+                    message: `Tous les posts (${successCount}) ont été modifiés avec succès !`,
                 });
-            } else if (editPostError > 0 && numberOfPosts < editPostError) {
+            } else if (successCount > 0) {
                 logger.warn({
                     type: 'promoteByEditing',
-                    message: `${numberOfPosts - editPostError} posts have been edited successfully but ${editPostError} posts editing failed`,
+                    status: 'partial_success',
+                    message: `${successCount} posts modifiés avec succès, ${errorCount} posts en échec sur ${initialNumberOfPosts} total`,
                 });
             } else {
                 logger.error({
                     type: 'promoteByEditing',
-                    message: `All posts editing failed (${numberOfPosts})`,
+                    status: 'complete_failure',
+                    message: `Aucun post n'a pu être modifié (${errorCount} erreurs sur ${initialNumberOfPosts})`,
                 });
             }
 
