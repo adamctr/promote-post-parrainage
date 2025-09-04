@@ -50,93 +50,69 @@ async function editPost(page, postIndex) {
             message: 'Éléments de la liste chargés avec succès'
         });
         
-        // Obtenir tous les boutons d'édition directement
-        const editButtons = await page.$$('a.parrainage_bt.edit[href*="/edit/"]');
-        logger.debug({
-            type: 'edit',
-            status: 'info',
-            message: `Nombre de boutons d'édition trouvés: ${editButtons.length}`
-        });
-        
-        if (postIndex < editButtons.length) {
-            // Obtenir l'URL du bouton avant de cliquer
-            const editUrl = await editButtons[postIndex].evaluate(button => button.href);
-            logger.debug({
-                type: 'edit',
-                status: 'info',
-                message: `URL d'édition: ${editUrl}`
-            });
+       // Obtenir tous les boutons d'édition
+const editButtons = await page.$$('a.parrainage_bt.edit[href*="/edit/"]');
+logger.debug({
+    type: 'edit',
+    status: 'info',
+    message: `Nombre de boutons d'édition trouvés: ${editButtons.length}`
+});
 
-                // DEBUG avant clic
-            logger.debug({
-                type: 'edit',
-                status: 'info',
-                message: `Tentative de clic sur bouton index=${postIndex}`
-            });
-            
-            // Vérifier si le bouton est visible et cliquable
-            const box = await editButtons[postIndex].boundingBox();
-            if (!box) {
-                logger.error({
-                type: 'edit',
-                status: 'error',
-                message: `Le bouton index=${postIndex} est invisible ou hors viewport`
-                });
-            } else {
-                logger.debug({
-                type: 'edit',
-                status: 'info',
-                message: `BoundingBox bouton index=${postIndex}:`,
-                box
-                });
-            }
-            
-            // Lancer le clic + navigation en parallèle
-            const oldUrl = page.url();
-            try {
-            await Promise.all([
-                page.waitForNavigation({ waitUntil: 'networkidle0', timeout: 60000 }),
-                (async () => {
-                // Scroll vers le bouton et tenter clic
-                await editButtons[postIndex].scrollIntoViewIfNeeded();
-                await editButtons[postIndex].click({ delay: 50 });
-                logger.debug({
-                    type: 'edit',
-                    status: 'info',
-                    message: `Clic exécuté sur bouton index=${postIndex}`
-                });
-                })()
-            ]);
+if (postIndex < editButtons.length) {
+    // Récupérer tous les liens
+    const links = await Promise.all(
+        editButtons.map(btn => btn.evaluate(el => el.href))
+    );
+    logger.debug({ type: 'edit', status: 'info', message: `Links: ${links}` });
 
+    const editUrl = links[postIndex];
+    logger.debug({ type: 'edit', status: 'info', message: `URL d'édition: ${editUrl}` });
+
+    let navigated = false;
+
+    // Essayer d'aller directement sur le lien
+    try {
+        await page.goto(editUrl, { waitUntil: 'networkidle0', timeout: 60000 });
+        navigated = true;
+        logger.debug({ type: 'edit', status: 'success', message: 'Navigation directe réussie via href' });
+    } catch (err) {
+        logger.warn({ type: 'edit', status: 'warn', message: `Navigation directe échouée, fallback sur click: ${err.message}` });
+    }
+
+    // Fallback si navigation directe échoue
+    if (!navigated) {
+        logger.debug({ type: 'edit', status: 'info', message: `Tentative de clic sur bouton index=${postIndex}` });
+
+        const box = await editButtons[postIndex].boundingBox();
+        if (!box) {
+            logger.error({ type: 'edit', status: 'error', message: `Le bouton index=${postIndex} est invisible ou hors viewport` });
+        } else {
+            logger.debug({ type: 'edit', status: 'info', message: `BoundingBox bouton index=${postIndex}:`, box });
+        }
+
+        const oldUrl = page.url();
+        try {
+            await editButtons[postIndex].scrollIntoViewIfNeeded();
+            await editButtons[postIndex].click({ delay: 50 });
+            logger.debug({ type: 'edit', status: 'info', message: `Clic exécuté sur bouton index=${postIndex}` });
+
+            // Attendre que le formulaire ou iframe CKEditor apparaisse
+            await page.waitForSelector(
+                'textarea#edit_parrainage_presentation, iframe[title^="Éditeur de texte enrichi"]',
+                { timeout: 60000 }
+            );
             const newUrl = page.url();
-            logger.debug({
-                type: 'edit',
-                status: 'success',
-                message: `Navigation détectée (oldUrl=${oldUrl}, newUrl=${newUrl})`
-            });
-            } catch (err) {
+            logger.debug({ type: 'edit', status: 'success', message: `Formulaire chargé (oldUrl=${oldUrl}, newUrl=${newUrl})` });
+        } catch (err) {
             const newUrl = page.url();
-            logger.error({
-                type: 'edit',
-                status: 'error',
-                message: `Pas de navigation après clic (oldUrl=${oldUrl}, newUrl=${newUrl})`,
-                error: err.message
-            });
-            
-            }
-            logger.debug({
-                type: 'edit',
-                status: 'success',
-                message: "Navigation vers la page d'édition réussie"
-            });
+            logger.error({ type: 'edit', status: 'error', message: `Impossible d'accéder à la page d'édition via click (oldUrl=${oldUrl}, newUrl=${newUrl})`, error: err.message });
+        }
+    }
 
-            // Vérifier que nous sommes bien sur la page d'édition
-            const currentUrl = page.url();
-            logger.debug({
-                type: 'edit',
-                status: 'info',
-                message: `URL actuelle: ${currentUrl}`
-            });
+    // URL finale
+    const currentUrl = page.url();
+    logger.debug({ type: 'edit', status: 'info', message: `URL actuelle: ${currentUrl}` });
+
 
             // Attendre que l'iframe soit chargée
             await page.waitForSelector('iframe[title^="Éditeur de texte enrichi"]', { timeout: 30000 });
