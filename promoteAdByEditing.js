@@ -25,6 +25,220 @@ async function getNumberOfPosts(page) {
     }
 }
 
+// Function to edit text in textarea
+async function editTextInTextarea(page) {
+    try {
+        logger.debug({
+            type: 'edit_textarea',
+            status: 'info',
+            message: 'Tentative d\'édition du textarea directement'
+        });
+
+        // Vérifier si le textarea existe
+        const textareaExists = await page.$('textarea#edit_parrainage_presentation') !== null;
+        if (!textareaExists) {
+            logger.debug({
+                type: 'edit_textarea',
+                status: 'info',
+                message: 'Textarea non trouvé, fallback vers iframe'
+            });
+            return false;
+        }
+
+        // Obtenir le texte actuel du textarea
+        const currentText = await page.$eval('textarea#edit_parrainage_presentation', el => el.value);
+        logger.debug({
+            type: 'edit_textarea',
+            status: 'info',
+            message: `Texte actuel du textarea: ${currentText.substring(0, 50)}...`
+        });
+
+        // Déterminer la nouvelle valeur
+        let newText;
+        if (currentText.endsWith('.')) {
+            newText = currentText.slice(0, -1); // Supprimer le dernier point
+            logger.debug({
+                type: 'edit_textarea',
+                status: 'info',
+                message: 'Point supprimé du textarea'
+            });
+        } else {
+            newText = currentText + '.'; // Ajouter un point
+            logger.debug({
+                type: 'edit_textarea',
+                status: 'info',
+                message: 'Point ajouté au textarea'
+            });
+        }
+
+        // Mettre à jour le textarea
+        await page.$eval('textarea#edit_parrainage_presentation', (el, text) => {
+            el.value = text;
+            el.dispatchEvent(new Event('input', { bubbles: true }));
+            el.dispatchEvent(new Event('change', { bubbles: true }));
+        }, newText);
+
+        logger.debug({
+            type: 'edit_textarea',
+            status: 'success',
+            message: 'Textarea modifié avec succès'
+        });
+
+        return true;
+    } catch (error) {
+        logger.error({
+            type: 'edit_textarea',
+            status: 'error',
+            message: `Erreur lors de l'édition du textarea: ${error.message}`
+        });
+        return false;
+    }
+}
+
+// Function to edit text in CKEditor iframe (fallback)
+async function editTextInIframe(page) {
+    try {
+        logger.debug({
+            type: 'edit_iframe',
+            status: 'info',
+            message: 'Tentative d\'édition de l\'iframe CKEditor'
+        });
+
+        // Lister toutes les iframes sur la page
+        const allIframes = await page.$$('iframe');
+        logger.debug({
+            type: 'edit_iframe',
+            status: 'info',
+            message: `Nombre total d'iframes sur la page: ${allIframes.length}`
+        });
+
+        // Pour chaque iframe, récupérer son title et src
+        for (let i = 0; i < allIframes.length; i++) {
+            const title = await allIframes[i].evaluate(el => el.title);
+            const src = await allIframes[i].evaluate(el => el.src);
+            logger.debug({
+                type: 'edit_iframe',
+                status: 'info',
+                message: `Iframe #${i} détectée`,
+                title,
+                src
+            });
+        }
+
+        // Attendre l'iframe CKEditor spécifique
+        try {
+            await page.waitForSelector('iframe[title^="Éditeur de texte enrichi"]', { timeout: 30000 });
+            logger.debug({
+                type: 'edit_iframe',
+                status: 'success',
+                message: 'Iframe CKEditor trouvée'
+            });
+        } catch (err) {
+            logger.warn({
+                type: 'edit_iframe',
+                status: 'warn',
+                message: 'Iframe CKEditor non trouvée dans les 30s',
+                error: err.message
+            });
+            return false;
+        }
+
+        const iframeElementHandle = await page.$('iframe[title^="Éditeur de texte enrichi"]');
+        if (!iframeElementHandle) {
+            logger.error({
+                type: 'edit_iframe',
+                status: 'error',
+                message: 'Impossible de trouver l\'iframe'
+            });
+            return false;
+        }
+        logger.debug({
+            type: 'edit_iframe',
+            status: 'success',
+            message: 'Handle de l\'iframe obtenu'
+        });
+
+        const iframe = await iframeElementHandle.contentFrame();
+        if (!iframe) {
+            logger.error({
+                type: 'edit_iframe',
+                status: 'error',
+                message: 'Impossible d\'accéder au contenu de l\'iframe'
+            });
+            return false;
+        }
+        logger.debug({
+            type: 'edit_iframe',
+            status: 'success',
+            message: 'Accès au contenu de l\'iframe réussi'
+        });
+
+        // Attendre que le contenu de l'éditeur soit chargé
+        await iframe.waitForSelector('body.cke_editable', { timeout: 30000 });
+        logger.debug({
+            type: 'edit_iframe',
+            status: 'success',
+            message: 'Corps de l\'éditeur chargé'
+        });
+
+        const currentText = await iframe.evaluate(() => document.body.textContent.trim());
+        logger.debug({
+            type: 'edit_iframe',
+            status: 'info',
+            message: `Texte actuel: ${currentText.substring(0, 50)}...`
+        });
+
+        await iframe.focus('body.cke_editable');
+        logger.debug({
+            type: 'edit_iframe',
+            status: 'success',
+            message: 'Focus sur l\'éditeur réussi'
+        });
+
+        // Positionner le curseur à la fin
+        await iframe.evaluate(() => {
+            const editorBody = document.querySelector('body.cke_editable');
+            const range = document.createRange();
+            range.selectNodeContents(editorBody);
+            range.collapse(false);
+            const selection = window.getSelection();
+            selection.removeAllRanges();
+            selection.addRange(range);
+        });
+        logger.debug({
+            type: 'edit_iframe',
+            status: 'success',
+            message: 'Curseur positionné à la fin'
+        });
+
+        // Ajouter ou supprimer le point
+        if (currentText.endsWith('.')) {
+            await iframe.evaluate(() => document.execCommand('delete', false));
+            logger.debug({
+                type: 'edit_iframe',
+                status: 'success',
+                message: 'Point supprimé avec succès'
+            });
+        } else {
+            await iframe.evaluate(() => document.execCommand('insertText', false, '.'));
+            logger.debug({
+                type: 'edit_iframe',
+                status: 'success',
+                message: 'Point ajouté avec succès'
+            });
+        }
+
+        return true;
+    } catch (error) {
+        logger.error({
+            type: 'edit_iframe',
+            status: 'error',
+            message: `Erreur lors de la modification dans l'iframe: ${error.message}`
+        });
+        return false;
+    }
+}
+
 // Function to edit a post
 async function editPost(page, postIndex) {
     try {
@@ -113,139 +327,43 @@ async function editPost(page, postIndex) {
             const currentUrl = page.url();
             logger.debug({ type: 'edit', status: 'info', message: `URL actuelle: ${currentUrl}` });
 
-
-            // Lister toutes les iframes sur la page
-            const allIframes = await page.$$('iframe');
+            // Essayer d'éditer le textarea d'abord, puis fallback vers iframe
+            let editSuccess = false;
+            
+            // Tentative 1: Édition directe du textarea
             logger.debug({
                 type: 'edit',
                 status: 'info',
-                message: `Nombre total d'iframes sur la page: ${allIframes.length}`
+                message: 'Tentative d\'édition via textarea...'
             });
-
-            // Pour chaque iframe, récupérer son title et src
-            for (let i = 0; i < allIframes.length; i++) {
-                const title = await allIframes[i].evaluate(el => el.title);
-                const src = await allIframes[i].evaluate(el => el.src);
+            
+            editSuccess = await editTextInTextarea(page);
+            
+            // Tentative 2: Fallback vers iframe CKEditor si textarea échoue
+            if (!editSuccess) {
                 logger.debug({
                     type: 'edit',
                     status: 'info',
-                    message: `Iframe #${i} détectée`,
-                    title,
-                    src
+                    message: 'Textarea failed, trying iframe fallback...'
                 });
+                
+                editSuccess = await editTextInIframe(page);
             }
-
-            // Attendre l'iframe CKEditor spécifique
-            try {
-                await page.waitForSelector('iframe[title^="Éditeur de texte enrichi"]', { timeout: 30000 });
-                logger.debug({
-                    type: 'edit',
-                    status: 'success',
-                    message: 'Iframe CKEditor trouvée'
-                });
-            } catch (err) {
-                logger.warn({
-                    type: 'edit',
-                    status: 'warn',
-                    message: 'Iframe CKEditor non trouvée dans les 30s',
-                    error: err.message
-                });
-            }
-
-
-            const iframeElementHandle = await page.$('iframe[title^="Éditeur de texte enrichi"]');
-            if (!iframeElementHandle) {
+            
+            if (!editSuccess) {
                 logger.error({
                     type: 'edit',
                     status: 'error',
-                    message: 'Impossible de trouver l\'iframe'
+                    message: 'Aucune méthode d\'édition n\'a fonctionné (textarea ni iframe)'
                 });
-                throw new Error('Editor iframe not found');
+                throw new Error('Could not edit text with either textarea or iframe method');
             }
+            
             logger.debug({
                 type: 'edit',
                 status: 'success',
-                message: 'Handle de l\'iframe obtenu'
+                message: 'Édition du texte réussie'
             });
-
-            const iframe = await iframeElementHandle.contentFrame();
-            if (!iframe) {
-                logger.error({
-                    type: 'edit',
-                    status: 'error',
-                    message: 'Impossible d\'accéder au contenu de l\'iframe'
-                });
-                throw new Error('Could not access iframe content');
-            }
-            logger.debug({
-                type: 'edit',
-                status: 'success',
-                message: 'Accès au contenu de l\'iframe réussi'
-            });
-
-            // Attendre que le contenu de l'éditeur soit chargé
-            await iframe.waitForSelector('body.cke_editable', { timeout: 30000 });
-            logger.debug({
-                type: 'edit',
-                status: 'success',
-                message: 'Corps de l\'éditeur chargé'
-            });
-
-            const currentText = await iframe.evaluate(() => document.body.textContent.trim());
-            logger.debug({
-                type: 'edit',
-                status: 'info',
-                message: `Texte actuel: ${currentText.substring(0, 50)}...`
-            });
-
-            await iframe.focus('body.cke_editable');
-            logger.debug({
-                type: 'edit',
-                status: 'success',
-                message: 'Focus sur l\'éditeur réussi'
-            });
-
-            // Positionner le curseur à la fin
-            await iframe.evaluate(() => {
-                const editorBody = document.querySelector('body.cke_editable');
-                const range = document.createRange();
-                range.selectNodeContents(editorBody);
-                range.collapse(false);
-                const selection = window.getSelection();
-                selection.removeAllRanges();
-                selection.addRange(range);
-            });
-            logger.debug({
-                type: 'edit',
-                status: 'success',
-                message: 'Curseur positionné à la fin'
-            });
-
-            // Ajouter ou supprimer le point
-            try {
-                if (currentText.endsWith('.')) {
-                    await iframe.evaluate(() => document.execCommand('delete', false));
-                    logger.debug({
-                        type: 'edit',
-                        status: 'success',
-                        message: 'Point supprimé avec succès'
-                    });
-                } else {
-                    await iframe.evaluate(() => document.execCommand('insertText', false, '.'));
-                    logger.debug({
-                        type: 'edit',
-                        status: 'success',
-                        message: 'Point ajouté avec succès'
-                    });
-                }
-            } catch (error) {
-                logger.error({
-                    type: 'edit',
-                    status: 'error',
-                    message: `Erreur lors de la modification du texte: ${error.message}`
-                });
-                throw error;
-            }
 
             // Sauvegarder les modifications
             try {
