@@ -120,7 +120,7 @@ async function connectToAccount() {
   
     try {
     const launchOptions = {
-        headless: process.env.HEADLESS === false ? false : 'new', // process.env.ENV === 'production' ? 'new' : false
+        headless: process.env.HEADLESS, // process.env.ENV === 'production' ? 'new' : false
         args: [ 
             '--no-sandbox',
             '--disable-setuid-sandbox',
