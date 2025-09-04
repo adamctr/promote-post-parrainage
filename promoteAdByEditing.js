@@ -375,6 +375,14 @@ async function editPost(page, postIndex) {
                     status: 'success',
                     message: 'Modifications sauvegardées avec succès'
                 });
+
+                // Retourner à la liste des posts parrainage pour pouvoir éditer le post suivant
+                await goToParrainagePostsSpace(page);
+                logger.debug({
+                    type: 'edit',
+                    status: 'success',
+                    message: 'Retour à la liste des posts effectué'
+                });
             } catch (error) {
                 logger.error({
                     type: 'edit',
